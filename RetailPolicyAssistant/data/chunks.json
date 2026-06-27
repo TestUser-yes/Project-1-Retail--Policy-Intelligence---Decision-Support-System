@@ -1,0 +1,18 @@
+[
+  {
+    "source": "Policy Document",
+    "section": "Data Retention",
+    "text": "Customer data must be retained for 7 years and destroyed securely after the retention period."
+  },
+  {
+    "source": "Policy Document",
+    "section": "Vendor Approval",
+    "text": "All vendors must pass a compliance review before onboarding and must not be from restricted jurisdictions."
+  },
+  {
+    "source": "Policy Document",
+    "section": "Audit Retention",
+    "text": "Audit logs are retained for 10 years and monitored for compliance issues and unusual activity."
+  }
+]
+

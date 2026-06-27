@@ -1,0 +1,4 @@
+question,expected_route,expected_risk
+"What is the data retention policy?",rag,low
+"Does vendor 123 have approval?",sql,low
+"Is vendor 456 in a restricted jurisdiction?",hybrid,high
