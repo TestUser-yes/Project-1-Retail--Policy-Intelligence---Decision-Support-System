@@ -6,7 +6,7 @@ llm = LLMService()
 
 def route_query(query: str):
     """
-    AI-driven router (replaces classifier logic)
+    AI-driven router
     """
     decision = llm.analyze_query(query)
     intent = decision.get("intent", "rag")

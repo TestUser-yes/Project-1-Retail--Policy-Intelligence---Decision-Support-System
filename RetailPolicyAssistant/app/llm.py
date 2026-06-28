@@ -1,18 +1,23 @@
-# app/llm.py
-
-import os
 import json
+import os
+
 from openai import OpenAI
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+from app.utils import load_environment
+
+
+load_environment()
+
+api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=api_key) if api_key else None
 
 
 class LLMService:
     """
-    Core LLM Brain for Retail Policy AI System.
+    Core LLM Brain for the Retail Policy AI System.
 
-    This replaces rule-based classification with AI reasoning.
+    The main flow uses the LLM first, and falls back to a local
+    heuristic only when the OpenAI call is unavailable.
     """
 
     def __init__(self, model: str = "gpt-4o-mini"):
@@ -22,10 +27,13 @@ class LLMService:
     # 1. BASIC CHAT INTERFACE (for debugging / fallback)
     # ---------------------------------------------------------
     def chat(self, messages, temperature: float = 0.2):
+        if client is None:
+            raise RuntimeError("OPENAI_API_KEY is not configured")
+
         response = client.chat.completions.create(
             model=self.model,
             messages=messages,
-            temperature=temperature
+            temperature=temperature,
         )
         return response.choices[0].message.content
 
@@ -34,13 +42,16 @@ class LLMService:
     # ---------------------------------------------------------
     def generate_json(self, messages, temperature: float = 0.2):
         """
-        Forces LLM to return valid JSON output
+        Forces the LLM to return valid JSON output.
         """
+        if client is None:
+            raise RuntimeError("OPENAI_API_KEY is not configured")
+
         response = client.chat.completions.create(
             model=self.model,
             messages=messages,
             temperature=temperature,
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
         )
 
         content = response.choices[0].message.content
@@ -50,7 +61,7 @@ class LLMService:
         except Exception:
             return {
                 "error": "Invalid JSON response from LLM",
-                "raw_output": content
+                "raw_output": content,
             }
 
     # ---------------------------------------------------------
@@ -58,9 +69,7 @@ class LLMService:
     # ---------------------------------------------------------
     def analyze_query(self, query: str):
         """
-        Replaces classifier.py completely.
-
-        This function decides:
+        Decide:
         - intent (rag / sql / hybrid)
         - risk level
         - confidence
@@ -79,14 +88,14 @@ Your job:
 3. Return ONLY valid JSON
 
 ROUTING RULES:
-- "rag" → policy questions, text-based knowledge, compliance docs
-- "sql" → structured data queries (vendors, audits, records)
-- "hybrid" → needs both database + policy reasoning
+- "rag" -> policy questions, text-based knowledge, compliance docs
+- "sql" -> structured data queries (vendors, audits, records)
+- "hybrid" -> needs both database + policy reasoning
 
 RISK LEVELS:
-- low → informational queries
-- medium → policy-sensitive queries
-- high → compliance / legal / audit risk
+- low -> informational queries
+- medium -> policy-sensitive queries
+- high -> compliance / legal / audit risk
 
 OUTPUT FORMAT (STRICT JSON ONLY):
 {
@@ -95,15 +104,86 @@ OUTPUT FORMAT (STRICT JSON ONLY):
   "confidence": 0.0-1.0,
   "reason": "short explanation"
 }
-"""
+""",
             },
             {
                 "role": "user",
-                "content": query
-            }
+                "content": query,
+            },
         ]
 
-        return self.generate_json(messages)
+        try:
+            decision = self.generate_json(messages)
+            if isinstance(decision, dict) and "error" not in decision:
+                return decision
+        except Exception:
+            pass
+
+        return self._fallback_analyze_query(query)
+
+    def _fallback_analyze_query(self, query: str):
+        text = query.lower()
+
+        sql_terms = {
+            "vendor",
+            "vendors",
+            "approval status",
+            "audit log",
+            "retention record",
+            "records",
+            "record id",
+            "database",
+        }
+        policy_terms = {
+            "policy",
+            "clause",
+            "section",
+            "explain",
+            "allowed",
+            "compliance",
+            "compliant",
+        }
+        high_risk_terms = {
+            "cross-border",
+            "restricted jurisdiction",
+            "legal hold",
+            "critical-risk",
+            "bribery",
+            "gift",
+            "hospitality",
+            "overseas supplier",
+            "audit finding",
+            "unresolved",
+            "legal validation",
+            "lawsuit",
+            "investigation",
+        }
+
+        needs_sql = any(term in text for term in sql_terms)
+        needs_policy = any(term in text for term in policy_terms)
+
+        if needs_sql and needs_policy:
+            intent = "hybrid"
+        elif needs_sql:
+            intent = "sql"
+        else:
+            intent = "rag"
+
+        if any(term in text for term in high_risk_terms):
+            risk_level = "high"
+        elif needs_policy or intent == "hybrid":
+            risk_level = "medium"
+        else:
+            risk_level = "low"
+
+        confidence = 0.92 if intent == "hybrid" else 0.88 if intent == "sql" else 0.81
+
+        return {
+            "intent": intent,
+            "risk_level": risk_level,
+            "confidence": confidence,
+            "reason": "Local fallback analysis used because the OpenAI response was unavailable.",
+        }
 
     # ---------------------------------------------------------
     # 4. ESCALATION DECISION ENGINE (future-ready)

@@ -4,7 +4,7 @@ Simple PostgreSQL connection test.
 
 from sqlalchemy import text
 
-from app.database import engine
+from app.database.session import engine
 
 try:
     with engine.connect() as connection:
