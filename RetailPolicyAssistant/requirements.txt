@@ -12,7 +12,9 @@ pydantic-settings
 openai
 
 langchain
+langchain-community
 langgraph
+pypdf
 
 python-dotenv
 

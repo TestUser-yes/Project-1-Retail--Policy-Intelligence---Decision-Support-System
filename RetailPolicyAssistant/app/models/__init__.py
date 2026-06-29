@@ -6,6 +6,7 @@ from app.models.audit import AuditLog
 from app.models.ai_queries import AIQuery
 from app.models.ai_response import AIResponse
 from app.models.trace import AgentTrace
+from app.models.evaluation import EvaluationRun, EvaluationResult
 
 __all__ = [
     "Base",
@@ -16,4 +17,6 @@ __all__ = [
     "AIQuery",
     "AIResponse",
     "AgentTrace",
+    "EvaluationRun",
+    "EvaluationResult",
 ]

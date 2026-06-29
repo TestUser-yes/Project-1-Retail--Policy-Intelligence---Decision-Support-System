@@ -13,11 +13,21 @@ class PolicyRepository:
             .all()
         )
 
-    def create(self, title: str, content: str, source: str, embedding=None):
+    def create(
+        self,
+        document_name: str,
+        page_number: int,
+        chunk_number: int,
+        content: str,
+        section: str | None = None,
+        embedding=None,
+    ):
         document = PolicyDocument(
-            title=title,
+            document_name=document_name,
+            page_number=page_number,
+            chunk_number=chunk_number,
+            section=section,
             content=content,
-            source=source,
             embedding=embedding,
         )
         self.db.add(document)

@@ -9,6 +9,7 @@ from app.models.policy import PolicyDocument
 from app.models.ai_queries import AIQuery
 from app.models.ai_response import AIResponse
 from app.models.trace import AgentTrace
+from app.models.evaluation import EvaluationRun, EvaluationResult
 
 
 def init_db():

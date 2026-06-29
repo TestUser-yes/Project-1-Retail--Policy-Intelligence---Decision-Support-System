@@ -3,8 +3,8 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 from app.embeddings import get_embedding
-from app.models.policy import PolicyDocument
-from app.database.session import SessionLocal
+from app.models import PolicyDocument
+from app.session import SessionLocal
 
 
 class SourceChunk(BaseModel):
@@ -61,13 +61,14 @@ def answer_from_policy_context(question: str) -> RAGResult:
         return RAGResult(answer=NOT_FOUND_MESSAGE, confidence=0.0, sources=[])
 
     best_doc = results[0]
+    source_section = best_doc.section or f"{best_doc.document_name} p.{best_doc.page_number} chunk {best_doc.chunk_number}"
     return RAGResult(
         answer=best_doc.content,
         confidence=0.0,
         sources=[
             SourceChunk(
                 source="documents",
-                section=f"doc-{best_doc.id}",
+                section=source_section,
                 text=best_doc.content,
             )
         ],
