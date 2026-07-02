@@ -5,11 +5,12 @@ Creates the SQLAlchemy Engine and Session factory.
 """
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
+from sqlalchemy.orm import declarative_base, sessionmaker
+from app.models.base import Base
 from app.core import settings
 
 # Create the SQLAlchemy engine
+Base = declarative_base()
 engine = create_engine(
     settings.DATABASE_URL,
     echo=False,          # Change to True while debugging SQL queries
