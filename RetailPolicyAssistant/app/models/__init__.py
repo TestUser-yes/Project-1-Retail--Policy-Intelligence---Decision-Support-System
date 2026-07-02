@@ -7,6 +7,13 @@ from app.models.ai_queries import AIQuery
 from app.models.ai_response import AIResponse
 from app.models.trace import AgentTrace
 from app.models.evaluation import EvaluationRun, EvaluationResult
+from app.models.sql_models import (
+    AuditLog as SqlAuditLog,
+    Employee,
+    PolicyAcknowledgement,
+    RiskEvent,
+    Vendor as SqlVendor,
+)
 
 __all__ = [
     "Base",
@@ -19,4 +26,9 @@ __all__ = [
     "AgentTrace",
     "EvaluationRun",
     "EvaluationResult",
+    "SqlAuditLog",
+    "Employee",
+    "PolicyAcknowledgement",
+    "RiskEvent",
+    "SqlVendor",
 ]
