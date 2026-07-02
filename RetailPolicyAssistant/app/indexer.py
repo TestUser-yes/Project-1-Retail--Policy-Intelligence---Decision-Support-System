@@ -1,17 +1,23 @@
 from pathlib import Path
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 
-from app.database.session import SessionLocal
 from app.embeddings import get_embedding
 from app.models import PolicyDocument
+from app.session import SessionLocal
+
+DOCUMENTS_DIR = Path("Documents")
 
 
-DOCUMENTS_DIR = Path(__file__).resolve().parents[1] / "Documents"
+def index_documents() -> None:
+    """
+    Reads all PDFs from the Documents folder,
+    splits them into chunks,
+    generates embeddings,
+    and stores them in PostgreSQL.
+    """
 
-
-def index_documents():
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=200,
@@ -20,18 +26,26 @@ def index_documents():
     db = SessionLocal()
 
     try:
-        for pdf in DOCUMENTS_DIR.glob("*.pdf"):
-            loader = PyPDFLoader(str(pdf))
+        # Optional during development: avoid duplicate indexing
+        db.query(PolicyDocument).delete()
+
+        for pdf_path in DOCUMENTS_DIR.glob("*.pdf"):
+
+            print(f"Indexing: {pdf_path.name}")
+
+            loader = PyPDFLoader(str(pdf_path))
             pages = loader.load()
 
             chunk_number = 0
 
             for page in pages:
+
                 chunks = splitter.split_text(page.page_content)
 
                 for chunk in chunks:
+
                     record = PolicyDocument(
-                        document_name=pdf.name,
+                        document_name=pdf_path.name,
                         page_number=page.metadata.get("page", 0) + 1,
                         chunk_number=chunk_number,
                         section="",
@@ -44,6 +58,11 @@ def index_documents():
 
         db.commit()
 
+        print("✅ Document indexing completed.")
+
+    except Exception:
+        db.rollback()
+        raise
+
     finally:
         db.close()
-

@@ -1,7 +1,6 @@
 from app.models.base import Base
 from app.database.session import engine
 
-# import all models so they register with Base
 from app.models.vendors import Vendor
 from app.models.compliance import ComplianceReview
 from app.models.audit import AuditLog
@@ -15,3 +14,7 @@ from app.models.evaluation import EvaluationRun, EvaluationResult
 def init_db():
     Base.metadata.create_all(bind=engine)
     print("Database tables created successfully")
+
+
+if __name__ == "__main__":
+    init_db()

@@ -1,15 +1,5 @@
 import json
-import os
-
-from openai import OpenAI
-
-from app.utils import load_environment
-
-
-load_environment()
-
-api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key) if api_key else None
+import ollama
 
 
 class LLMService:
@@ -17,50 +7,35 @@ class LLMService:
     Core LLM Brain for the Retail Policy AI System.
 
     The main flow uses the LLM first, and falls back to a local
-    heuristic only when the OpenAI call is unavailable.
+    heuristic only when the Ollama call is unavailable.
     """
 
-    def __init__(self, model: str = "gpt-4o-mini"):
+    def __init__(self, model: str = "phi3:mini"):
         self.model = model
 
     # ---------------------------------------------------------
     # 1. BASIC CHAT INTERFACE (for debugging / fallback)
     # ---------------------------------------------------------
     def chat(self, messages, temperature: float = 0.2):
-        if client is None:
-            raise RuntimeError("OPENAI_API_KEY is not configured")
-
-        response = client.chat.completions.create(
+        response = ollama.chat(
             model=self.model,
             messages=messages,
-            temperature=temperature,
+            options={
+                "temperature": temperature,
+            },
         )
-        return response.choices[0].message.content
+        return response["message"]["content"]
 
     # ---------------------------------------------------------
     # 2. STRUCTURED JSON GENERATOR (CORE FUNCTION)
     # ---------------------------------------------------------
     def generate_json(self, messages, temperature: float = 0.2):
-        """
-        Forces the LLM to return valid JSON output.
-        """
-        if client is None:
-            raise RuntimeError("OPENAI_API_KEY is not configured")
-
-        response = client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature,
-            response_format={"type": "json_object"},
-        )
-
-        content = response.choices[0].message.content
-
+        content = self.chat(messages, temperature)
         try:
             return json.loads(content)
         except Exception:
             return {
-                "error": "Invalid JSON response from LLM",
+                "error": "Invalid JSON",
                 "raw_output": content,
             }
 
@@ -186,7 +161,39 @@ OUTPUT FORMAT (STRICT JSON ONLY):
         }
 
     # ---------------------------------------------------------
-    # 4. ESCALATION DECISION ENGINE (future-ready)
+    # 4. RAG ANSWER GENERATION
+    # ---------------------------------------------------------
+    def generate_rag_answer(self, question: str, context: str):
+        """
+        Generate a grounded answer using retrieved policy context.
+        """
+        messages = [
+            {
+                "role": "system",
+                "content": """You are an enterprise Retail Policy Assistant.
+Answer ONLY using the supplied policy context.
+Rules:
+- Never invent information.
+- If the answer is not in the context, say: "I couldn't find that information in the available policy documents."
+- Keep answers concise and professional.
+- Mention policy names only if relevant.""",
+            },
+            {
+                "role": "user",
+                "content": f"""Policy Context:{context}
+----------------------------
+Question:{question}""",
+            },
+        ]
+        try:
+            return self.chat(messages)
+        except Exception as e:
+            print("\nLLM ERROR:")
+            print(e)
+            raise
+
+    # ---------------------------------------------------------
+    # 5. ESCALATION DECISION ENGINE (future-ready)
     # ---------------------------------------------------------
     def should_escalate(self, risk_level: str, confidence: float):
         """
