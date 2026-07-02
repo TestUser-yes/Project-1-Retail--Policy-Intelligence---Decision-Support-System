@@ -5,11 +5,6 @@ import os
 import re
 
 import numpy as np
-from openai import OpenAI
-
-
-api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key) if api_key else None
 
 
 def _fallback_embedding(text: str, dimensions: int = 1536) -> list[float]:
@@ -35,14 +30,4 @@ def get_embedding(text: str):
     """
     Convert text → vector embedding
     """
-    if client is None:
-        return _fallback_embedding(text)
-
-    try:
-        response = client.embeddings.create(
-            model="text-embedding-3-small",
-            input=text,
-        )
-        return response.data[0].embedding
-    except Exception:
-        return _fallback_embedding(text)
+    return _fallback_embedding(text)

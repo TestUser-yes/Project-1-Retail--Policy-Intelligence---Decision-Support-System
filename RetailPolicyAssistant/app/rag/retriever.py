@@ -3,7 +3,7 @@ from app.models import PolicyDocument
 from app.session import SessionLocal
 
 
-def retrieve_policy_chunks(question: str, top_k: int = 3):
+def retrieve_policy_chunks(question: str, top_k: int = 6):
     """
     Retrieve the most relevant policy chunks using pgvector similarity search.
     """
@@ -13,7 +13,7 @@ def retrieve_policy_chunks(question: str, top_k: int = 3):
         results = (
             db.query(PolicyDocument)
             .order_by(PolicyDocument.embedding.l2_distance(embedding))
-            .limit(top_k)
+            .limit(top_k * 2)
             .all()
         )
         return results

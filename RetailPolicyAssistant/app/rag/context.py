@@ -2,15 +2,15 @@ from app.models import PolicyDocument
 
 
 def build_context(chunks: list[PolicyDocument]) -> str:
-    """
-    Convert retrieved chunks into a single context block.
-    """
-    context = []
-    for chunk in chunks:
-        context.append(
-            f"""Document: {chunk.document_name}
-Page: {chunk.page_number}
-Section: {chunk.section}
-{chunk.content}"""
+    parts = []
+    for i, chunk in enumerate(chunks, start=1):
+        text = chunk.content.strip()
+        parts.append(
+            f"""=========================DOCUMENT {i}=========================
+Document : {chunk.document_name}
+Page     : {chunk.page_number}
+Section  : {chunk.section or "N/A"}
+TEXT-----
+{text}"""
         )
-    return "\n\n---------------------------\n\n".join(context)
+    return "\n".join(parts)

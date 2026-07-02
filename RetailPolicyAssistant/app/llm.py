@@ -1,5 +1,8 @@
 import json
-import ollama
+
+import requests
+
+from app.core import settings
 
 
 class LLMService:
@@ -17,14 +20,23 @@ class LLMService:
     # 1. BASIC CHAT INTERFACE (for debugging / fallback)
     # ---------------------------------------------------------
     def chat(self, messages, temperature: float = 0.2):
-        response = ollama.chat(
-            model=self.model,
-            messages=messages,
-            options={
+        url = f"{settings.OLLAMA_BASE_URL}/api/chat"
+        payload = {
+            "model": self.model or settings.OLLAMA_MODEL,
+            "messages": messages,
+            "stream": False,
+            "options": {
                 "temperature": temperature,
+                "num_predict": 512,
             },
+        }
+        response = requests.post(
+            url,
+            json=payload,
+            timeout=300,
         )
-        return response["message"]["content"]
+        response.raise_for_status()
+        return response.json()["message"]["content"]
 
     # ---------------------------------------------------------
     # 2. STRUCTURED JSON GENERATOR (CORE FUNCTION)
@@ -167,6 +179,10 @@ OUTPUT FORMAT (STRICT JSON ONLY):
         """
         Generate a grounded answer using retrieved policy context.
         """
+        print("=" * 50)
+        print("Context length:", len(context))
+        print("=" * 50)
+
         messages = [
             {
                 "role": "system",

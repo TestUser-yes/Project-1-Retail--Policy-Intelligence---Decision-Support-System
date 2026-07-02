@@ -18,6 +18,9 @@ def answer_policy_question(question: str):
         }
 
     context = build_context(chunks)
+    print("\n========== CONTEXT SENT TO LLM ==========")
+    print(context)
+    print("\n=========================================\n")
     answer = llm.generate_rag_answer(question, context)
     return {
         "answer": answer,
