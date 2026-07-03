@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import time
 from app.api import router
 from app.core.rate_limit import get_rate_limiter
+from app.observability.langfuse_tracer import get_tracer
 
 
 app = FastAPI(
@@ -10,6 +12,45 @@ app = FastAPI(
     version="4.0 - Full Feature Implementation",
     description="Intelligent policy compliance system with auth, cost tracking, memory, RBAC, guardrails, caching, and rate limiting",
 )
+
+# Request tracing middleware
+@app.middleware("http")
+async def tracing_middleware(request: Request, call_next):
+    """Log all requests to Langfuse."""
+    start_time = time.time()
+    tracer = get_tracer()
+
+    # Extract user info from header if available
+    auth_header = request.headers.get("Authorization", "")
+    user_id = auth_header.split()[-1][:20] if auth_header else "anonymous"
+
+    # Create trace for request
+    trace = tracer.create_trace(
+        name=f"http-{request.method}-{request.url.path}",
+        user_id=user_id,
+        metadata={
+            "method": request.method,
+            "path": request.url.path,
+            "client": request.client.host if request.client else "unknown",
+        }
+    )
+
+    response = await call_next(request)
+    latency_ms = (time.time() - start_time) * 1000
+
+    # Log response details
+    tracer.create_span(
+        trace,
+        "http-response",
+        input_data={"method": request.method, "path": request.url.path},
+        output_data={"status_code": response.status_code, "latency_ms": latency_ms},
+    )
+
+    response.headers["X-Trace-ID"] = str(trace)
+    tracer.flush()
+
+    return response
+
 
 # Rate limiting middleware
 @app.middleware("http")
