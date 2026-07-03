@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.db.deps import get_db
+from app.database.session import get_db
 from app.orchestrator import Orchestrator
+from app.core.auth import get_current_user, get_demo_token, User
 
 
 router = APIRouter()
@@ -58,8 +59,19 @@ def health_check():
     }
 
 
+@router.get("/token")
+def get_token():
+    """Get demo token for testing."""
+    return {"access_token": get_demo_token(), "token_type": "bearer"}
+
+
 @router.post("/ask", response_model=AskResponse)
-def ask(request: AskRequest, db: Session = Depends(get_db)):
+def ask(
+    request: AskRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Ask a policy question (requires authentication)."""
     query = request.query
 
     orchestrator = Orchestrator(db=db)

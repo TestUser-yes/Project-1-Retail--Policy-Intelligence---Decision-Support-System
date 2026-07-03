@@ -17,6 +17,7 @@ langgraph
 pypdf
 
 python-dotenv
+python-jose[cryptography]
 
 pytest
 httpx
