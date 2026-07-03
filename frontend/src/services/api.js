@@ -1,0 +1,22 @@
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 30000,
+});
+
+export const queryAPI = {
+  ask: async (query) => {
+    const response = await api.post('/ask', { query });
+    return response.data;
+  },
+
+  getHealth: async () => {
+    const response = await api.get('/health');
+    return response.data;
+  },
+};
+
+export default api;

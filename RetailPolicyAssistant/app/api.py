@@ -49,10 +49,12 @@ class AskResponse(BaseModel):
 @router.get("/health")
 def health_check():
     return {
-        "status": "ok",
+        "status": "healthy",
+        "version": "1.0.0",
         "system": "Retail Policy AI",
         "agents": "active",
         "db": "connected",
+        "timestamp": "2026-07-03"
     }
 
 
