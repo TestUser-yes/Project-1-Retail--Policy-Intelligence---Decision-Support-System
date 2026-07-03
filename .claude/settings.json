@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"/c/Users/Anagha.e/project\" -type f -name \"*ResultCard*\" 2>/dev/null)",
+      "Read(//c/Users/Anagha.e/project/**)"
+    ]
+  }
+}

@@ -39,6 +39,12 @@ class ResultModel(BaseModel):
     result: str
 
 
+class SLOMetricsModel(BaseModel):
+    latency_ms: float
+    target_latency_ms: float
+    slo_status: str  # pass, warning, fail
+
+
 # Conversation Response
 class MessageModel(BaseModel):
     role: str
@@ -59,10 +65,12 @@ class AskResponse(BaseModel):
     result: ResultModel
     risk: RiskModel
     escalate: bool
+    escalation_reason: str = ""
     latency_seconds: float
     cost_usd: float = 0.0
     budget_remaining_usd: float = 0.0
     budget_percent_used: float = 0.0
+    slo_metrics: SLOMetricsModel
     validation_passed: bool = True
 
 
@@ -227,6 +235,12 @@ def ask(
         )
 
         # 7. Return response with all metadata
+        slo_metrics_data = response.get("slo_metrics", {
+            "latency_ms": 0,
+            "target_latency_ms": 2000.0,
+            "slo_status": "unknown",
+        })
+
         return AskResponse(
             query=response["query"],
             conversation_id=conversation_id,
@@ -235,10 +249,12 @@ def ask(
             result=response["result"],
             risk=response["risk"],
             escalate=response["escalate"],
+            escalation_reason=response.get("escalation_reason", ""),
             latency_seconds=latency_seconds,
             cost_usd=response.get("cost_usd", 0.0),
             budget_remaining_usd=response.get("budget_remaining_usd", 0.0),
             budget_percent_used=response.get("budget_percent_used", 0.0),
+            slo_metrics=SLOMetricsModel(**slo_metrics_data),
             validation_passed=True,
         )
 
