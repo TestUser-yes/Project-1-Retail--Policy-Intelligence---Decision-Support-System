@@ -1,8 +1,10 @@
 """Orchestrator for demo: routes queries without calling external services."""
 
+import uuid
 from app.observability.logger import AgentLogger
 from app.observability.metrics import Metrics
 from app.repositories.ai_repo import AIRepository
+from app.core.cost_tracking import get_cost_tracker
 
 
 class Orchestrator:
@@ -11,12 +13,14 @@ class Orchestrator:
         self.logger = AgentLogger()
         self.metrics = Metrics()
         self.ai_repo = AIRepository(self.db)
+        self.cost_tracker = get_cost_tracker()
 
     def run(self, query: str):
         """Process query and return demo response."""
+        query_id = str(uuid.uuid4())[:8]
         try:
             self.metrics.start_timer()
-            self.logger.log("input", {"query": query})
+            self.logger.log("input", {"query": query, "query_id": query_id})
 
             # Detect intent from keywords
             intent = self._detect_intent(query)
@@ -46,6 +50,20 @@ class Orchestrator:
             # Get latency
             latency = self.metrics.end_timer()
 
+            # Record cost tracking (currently $0 for local Ollama)
+            estimated_tokens = len(query.split()) + 50  # Rough estimate
+            self.cost_tracker.record_query(
+                query_id=query_id,
+                query_text=query,
+                embedding_tokens=estimated_tokens,
+                completion_tokens=50,
+                embedding_cost=0.0,  # Ollama is free
+                completion_cost=0.0,
+            )
+
+            # Get cost summary for response
+            cost_summary = self.cost_tracker.get_summary()
+
             # Build response
             return {
                 "query": query,
@@ -63,6 +81,9 @@ class Orchestrator:
                 },
                 "escalate": escalation_result.get("escalate", False),
                 "latency_seconds": latency,
+                "cost_usd": 0.0,
+                "budget_remaining_usd": cost_summary.budget_remaining,
+                "budget_percent_used": cost_summary.budget_usage_percent,
             }
 
         except Exception as exc:

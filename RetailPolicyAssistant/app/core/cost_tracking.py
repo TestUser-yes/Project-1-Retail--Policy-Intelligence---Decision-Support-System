@@ -50,6 +50,7 @@ class CostSummary:
     queries_this_hour: int = 0
     queries_today: int = 0
     queries_this_month: int = 0
+    budget_remaining: float = 0.0  # Will be set after calculation
 
 
 class CostTracker:
@@ -106,6 +107,7 @@ class CostTracker:
         )
 
         budget_usage = (daily_cost / self.budget.daily_limit) * 100
+        budget_remaining = self.budget.daily_limit - daily_cost
 
         return CostSummary(
             total_queries=len(self.queries),
@@ -117,6 +119,7 @@ class CostTracker:
             queries_this_hour=len(hour_queries),
             queries_today=len(today_queries),
             queries_this_month=len(month_queries),
+            budget_remaining=budget_remaining,
         )
 
     def check_budget(self) -> Dict:
