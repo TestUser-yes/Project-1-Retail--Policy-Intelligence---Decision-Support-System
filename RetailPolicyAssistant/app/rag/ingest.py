@@ -4,7 +4,7 @@ from app.embeddings import get_embedding
 from app.models import PolicyDocument
 from app.rag.loader import load_policy_documents
 from app.rag.splitter import split_documents
-from app.session import SessionLocal
+from app.database.session import SessionLocal
 
 
 def ingest_documents() -> None:

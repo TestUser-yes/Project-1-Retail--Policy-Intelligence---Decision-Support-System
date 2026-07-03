@@ -5,7 +5,7 @@ from langchain_community.document_loaders import PyPDFLoader
 
 from app.embeddings import get_embedding
 from app.models import PolicyDocument
-from app.session import SessionLocal
+from app.database.session import SessionLocal
 
 DOCUMENTS_DIR = Path("Documents")
 
