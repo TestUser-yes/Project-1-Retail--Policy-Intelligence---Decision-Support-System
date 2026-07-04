@@ -1,0 +1,104 @@
+# Retail Policy Intelligence System Configuration
+# This file defines all dynamic settings for the system.
+# Environment variables override these values.
+
+keywords:
+  policy:
+    - policy
+    - procedure
+    - rule
+    - guideline
+    - process
+    - protocol
+    - standard
+    - requirement
+    - compliance
+    - approval
+    - authorization
+    - permission
+    - access
+  vendor:
+    - vendor
+    - supplier
+    - partner
+    - cost
+    - price
+    - budget
+    - rate
+    - fee
+    - contract
+    - invoice
+    - payment
+    - terms
+    - discount
+    - wholesale
+  retail:
+    - refund
+    - return
+    - exchange
+    - customer
+    - employee
+    - discount
+    - promotion
+    - sale
+    - inventory
+    - stock
+    - shipping
+    - delivery
+    - warehouse
+    - store
+    - outlet
+
+risk_thresholds:
+  low:
+    confidence_min: 0.8
+    keywords: []
+  medium:
+    confidence_min: 0.5
+    keywords:
+      - approval
+      - compliance
+      - audit
+      - finding
+      - remediation
+      - pending
+      - under review
+      - cross-border
+  high:
+    confidence_min: 0.0
+    keywords:
+      - override
+      - violation
+      - critical
+      - legal hold
+      - gdpr
+      - escalation
+      - non-compliant
+      - breach
+      - restriction
+      - suspended
+      - rejected
+      - urgent
+
+cost:
+  provider: ollama  # ollama, openai, anthropic
+  embedding_cost_per_1k: 0.0
+  completion_cost_per_1k: 0.0
+  budget_usd: 100.0
+
+auth:
+  secret_key: ${SECRET_KEY:-demo-secret-key-change-in-production}
+  algorithm: HS256
+  access_token_expire_minutes: 30
+  demo_user_id: demo-user
+  demo_username: demo
+  demo_email: demo@retailpolicy.local
+  demo_role: user
+  admin_user_id: demo-admin
+  admin_username: admin
+  admin_email: admin@retailpolicy.local
+  admin_role: admin
+
+routing:
+  intent_strategy: keywords  # keywords, llm
+  risk_assessment_strategy: keywords  # keywords, llm

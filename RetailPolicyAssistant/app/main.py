@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import time
 from app.api import router
+from app.routers.dashboard import router as dashboard_router
 from app.core.rate_limit import get_rate_limiter
 from app.observability.langfuse_tracer import get_tracer
 
@@ -85,14 +86,15 @@ async def rate_limit_middleware(request: Request, call_next):
     return response
 
 
-# Enable CORS for React frontend
+# Enable CORS for Next.js frontend (development mode)
+# In production, replace with actual frontend domain
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",  # Alternative React port
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
+        "http://localhost:3000",  # Next.js dev server (primary)
+        "http://127.0.0.1:3000",  # Next.js localhost
+        "http://localhost:5173",  # Vite dev server (fallback)
+        "http://127.0.0.1:5173",  # Vite localhost
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -100,4 +102,5 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(dashboard_router)
 

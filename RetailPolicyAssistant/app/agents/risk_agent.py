@@ -1,4 +1,7 @@
+"""Risk Agent - Risk classification and escalation detection."""
+
 import re
+from app.agents.base_agent import BaseAgent, AgentInput, AgentOutput
 from app.llm import LLMService
 
 llm = LLMService()
@@ -82,16 +85,11 @@ ESCALATION_KEYWORDS = [
 ]
 
 
-class RiskAgent:
-    """
-    Risk Assessment Agent for policy compliance.
+class RiskAgent(BaseAgent):
+    """Risk classification and escalation detection."""
 
-    Evaluates queries and results for:
-    - High-risk business scenarios
-    - Policy violations
-    - Compliance concerns
-    - Escalation requirements
-    """
+    def __init__(self):
+        super().__init__(name="risk_agent", description="Risk classifier")
 
     def _detect_high_risk_scenarios(self, query: str, result: str) -> tuple[str, list[str]]:
         """Detect specific high-risk scenarios requiring escalation."""
@@ -163,7 +161,20 @@ class RiskAgent:
                 return True
         return False
 
-    def run(self, query: str, result: dict) -> dict:
+    async def _execute(self, agent_input: AgentInput) -> AgentOutput:
+        """Execute risk assessment."""
+        query = agent_input.query
+        result = agent_input.previous_outputs.get("result", {})
+
+        risk_result = self._run_risk_assessment(query, result)
+
+        return AgentOutput(
+            success=True,
+            data=risk_result,
+            confidence=risk_result.get("confidence", 0.0),
+        )
+
+    def _run_risk_assessment(self, query: str, result: dict) -> dict:
         """
         Execute risk assessment.
 

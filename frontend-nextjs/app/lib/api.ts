@@ -9,10 +9,36 @@ const apiClient = axios.create({
   },
 });
 
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
+// Initialize token on app load
+let tokenPromise: Promise<string> | null = null;
+
+async function ensureToken(): Promise<string> {
+  const cached = localStorage.getItem('access_token');
+  if (cached) return cached;
+
+  if (!tokenPromise) {
+    tokenPromise = (async () => {
+      try {
+        const response = await axios.get(`${API_URL}/token`);
+        const token = response.data.access_token;
+        localStorage.setItem('access_token', token);
+        return token;
+      } catch (error) {
+        console.error('Failed to fetch token:', error);
+        throw new Error('Authentication failed');
+      }
+    })();
+  }
+
+  return tokenPromise;
+}
+
+apiClient.interceptors.request.use(async (config) => {
+  try {
+    const token = await ensureToken();
     config.headers.Authorization = `Bearer ${token}`;
+  } catch (error) {
+    console.error('Token error:', error);
   }
   return config;
 });
@@ -52,7 +78,13 @@ export interface AskResponse {
   budget_percent_used: number;
   slo_metrics: SLOMetrics;
   validation_passed: boolean;
+  // Phase 7 fields
+  confidence_score?: number;
+  sources?: Array<string | { source?: string; policy?: string; section?: string; page?: number }>;
+  sql_validation?: string | { query: string; status: string; result: any };
+  recommendation?: string;
 }
+
 
 export const api = {
   async getToken() {

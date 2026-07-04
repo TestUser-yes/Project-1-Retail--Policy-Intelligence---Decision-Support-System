@@ -1,24 +1,35 @@
-from app.models.base import Base
-from app.models.policy import PolicyDocument
-from app.models.vendors import Vendor
-from app.models.compliance import ComplianceReview
-from app.models.audit import AuditLog
-from app.models.retention import RetentionRecord
+"""Database models - SQLAlchemy ORM definitions."""
+
+from app.models.models import (
+    Base,
+    User,
+    PolicyDocument,
+    QueryLog,
+    AuditLog,
+    ComplianceReview,
+    Vendor,
+    RetentionRecord,
+    Finding,
+    ComplianceMetric,
+    AgentTrace,
+    SystemConfig,
+)
 from app.models.ai_queries import AIQuery
-from app.models.ai_response import AIResponse
-from app.models.trace import AgentTrace
-from app.models.evaluation import EvaluationRun, EvaluationResult
+from app.models.evaluation import EvaluationResult
 
 __all__ = [
     "Base",
+    "User",
     "PolicyDocument",
-    "Vendor",
-    "ComplianceReview",
+    "QueryLog",
     "AuditLog",
+    "ComplianceReview",
+    "Vendor",
     "RetentionRecord",
-    "AIQuery",
-    "AIResponse",
+    "Finding",
+    "ComplianceMetric",
     "AgentTrace",
-    "EvaluationRun",
+    "SystemConfig",
+    "AIQuery",
     "EvaluationResult",
 ]

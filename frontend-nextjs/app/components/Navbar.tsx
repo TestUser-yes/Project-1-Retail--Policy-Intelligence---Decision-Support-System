@@ -16,10 +16,16 @@ export default function Navbar() {
           </Link>
           <div className="flex gap-4">
             <Link
-              href="/"
+              href="/dashboard"
               className="px-4 py-2 text-gray-700 hover:text-blue-600 font-semibold transition"
             >
-              Home
+              Dashboard
+            </Link>
+            <Link
+              href="/api-docs"
+              className="px-4 py-2 text-gray-700 hover:text-blue-600 font-semibold transition"
+            >
+              API Docs
             </Link>
             <Link
               href="/query"

@@ -12,6 +12,7 @@ from app.core.rate_limit import check_rate_limit
 from app.core.memory import get_or_create_conversation
 from app.core.permissions import PermissionValidator, Permission, require_permission
 from app.observability.langfuse_tracer import get_tracer
+from app.models import AIQuery
 
 
 router = APIRouter()
@@ -72,6 +73,11 @@ class AskResponse(BaseModel):
     budget_percent_used: float = 0.0
     slo_metrics: SLOMetricsModel
     validation_passed: bool = True
+    # Phase 7 fields
+    confidence_score: float = 0.0
+    sources: list = []
+    sql_validation: str = ""
+    recommendation: str = ""
 
 
 # -----------------------------
@@ -234,6 +240,17 @@ def ask(
             }
         )
 
+        # 6b. Save query to database for dashboard
+        ai_query = AIQuery(
+            query=query,
+            intent=response["intent"]["intent"],
+            route=response["route"],
+            risk_level=response["risk"]["risk_level"],
+            latency=latency_seconds * 1000,
+        )
+        db.add(ai_query)
+        db.commit()
+
         # 7. Return response with all metadata
         slo_metrics_data = response.get("slo_metrics", {
             "latency_ms": 0,
@@ -256,6 +273,10 @@ def ask(
             budget_percent_used=response.get("budget_percent_used", 0.0),
             slo_metrics=SLOMetricsModel(**slo_metrics_data),
             validation_passed=True,
+            confidence_score=response.get("confidence_score", 0.0),
+            sources=response.get("sources", []),
+            sql_validation=response.get("sql_validation", ""),
+            recommendation=response.get("recommendation", ""),
         )
 
     except HTTPException:

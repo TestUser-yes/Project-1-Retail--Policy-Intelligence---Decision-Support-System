@@ -31,7 +31,8 @@ class QueryCost:
 
 @dataclass
 class BudgetLimits:
-    """Define budget constraints."""
+    """Define budget constraints per capstone requirements (README.md)."""
+    # Constants from app/config/constants.py BUDGET_CONFIG
     daily_limit: float = 100.0  # $100/day (for paid LLM)
     monthly_limit: float = 2000.0  # $2000/month
     per_query_limit: float = 1.0  # $1 max per query

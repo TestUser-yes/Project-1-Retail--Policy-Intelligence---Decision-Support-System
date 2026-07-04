@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # -------------------------
     # Database
     # -------------------------
-    DATABASE_URL: str  # OPTIONAL now (not required anymore)
+    DATABASE_URL: str = "sqlite:///./policy_system.db"  # Local SQLite database
 
     # -------------------------
     # OpenAI

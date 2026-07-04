@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, Clock, CheckCircle, TrendingUp } from 'lucide-react';
 
 export default function ComplianceDashboard() {
+  // Constants from capstone requirements
+  const SLA_TARGET_HOURS = 24;
+
   const [stats, setStats] = useState({
     pendingHandoffs: 0,
     completedToday: 0,
@@ -18,14 +21,32 @@ export default function ComplianceDashboard() {
 
   const fetchStats = async () => {
     try {
-      setStats({
-        pendingHandoffs: 12,
-        completedToday: 8,
-        avgResolutionTime: '2h 45m',
-        slaCompliance: '96.8%',
-      });
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const dashboardResponse = await fetch(`${apiUrl}/api/dashboard`);
+      if (dashboardResponse.ok) {
+        const data = await dashboardResponse.json();
+        setStats({
+          pendingHandoffs: data.escalationCount || 0,
+          completedToday: Math.floor((data.totalQueries || 0) * 0.5), // Approximate
+          avgResolutionTime: `${(data.avgLatency || 0).toFixed(0)}ms`,
+          slaCompliance: `${(data.successRate || 0).toFixed(1)}%`,
+        });
+      } else {
+        setStats({
+          pendingHandoffs: 0,
+          completedToday: 0,
+          avgResolutionTime: 'N/A',
+          slaCompliance: 'N/A',
+        });
+      }
     } catch (error) {
       console.error('Failed to fetch stats:', error);
+      setStats({
+        pendingHandoffs: 0,
+        completedToday: 0,
+        avgResolutionTime: 'Error',
+        slaCompliance: 'Error',
+      });
     } finally {
       setLoading(false);
     }

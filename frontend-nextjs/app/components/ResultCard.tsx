@@ -107,7 +107,7 @@ export default function ResultCard({ result }: ResultCardProps) {
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Response</h2>
         <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
           <p className="text-gray-800 leading-relaxed whitespace-pre-wrap text-lg">
-            {result.result?.result || result.result}
+            {typeof result.result === 'string' ? result.result : result.result?.result}
           </p>
         </div>
       </div>

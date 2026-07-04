@@ -4,14 +4,19 @@ import { useState } from 'react';
 import { Save, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function SettingsPage() {
+  // Constants from capstone requirements
+  const SLO_TARGET_MS = 2000; // 2 seconds from capstone spec
+  const ESCALATION_THRESHOLD_MS = 1600; // 80% of target
+  const SAVE_NOTIFICATION_TIMEOUT_MS = 3000; // 3 seconds notification display
+
   const [settings, setSettings] = useState({
-    sloTarget: 2000,
-    escalationThreshold: 1600,
+    sloTarget: SLO_TARGET_MS,
+    escalationThreshold: ESCALATION_THRESHOLD_MS,
     maxRetries: 3,
     notificationsEnabled: true,
     analyticsEnabled: true,
-    systemName: 'Retail Policy Intelligence',
-    version: '1.0.0',
+    systemName: 'Retail Policy Intelligence System',
+    version: '4.0 - Full Feature Implementation',
   });
 
   const [saved, setSaved] = useState(false);
@@ -19,7 +24,7 @@ export default function SettingsPage() {
   const handleSave = async () => {
     try {
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      setTimeout(() => setSaved(false), SAVE_NOTIFICATION_TIMEOUT_MS);
     } catch (error) {
       console.error('Failed to save settings:', error);
     }

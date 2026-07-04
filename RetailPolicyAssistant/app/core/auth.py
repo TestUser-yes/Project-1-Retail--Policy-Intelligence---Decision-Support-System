@@ -7,11 +7,13 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from starlette.authentication import AuthCredentials
 import os
+from app.config import get_config
 
-# JWT Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "demo-secret-key-change-in-production")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Get configuration
+_config = get_config()
+SECRET_KEY = _config.auth.secret_key
+ALGORITHM = _config.auth.algorithm
+ACCESS_TOKEN_EXPIRE_MINUTES = _config.auth.access_token_expire_minutes
 
 security = HTTPBearer()
 
@@ -74,19 +76,21 @@ async def get_current_user(credentials = Depends(security)) -> User:
 
 def get_demo_token() -> str:
     """Generate demo token for testing."""
+    config = get_config()
     return create_access_token(
-        user_id="demo-user",
-        username="demo",
-        email="demo@retailpolicy.local",
-        role="user"
+        user_id=config.auth.demo_user_id,
+        username=config.auth.demo_username,
+        email=config.auth.demo_email,
+        role=config.auth.demo_role
     )
 
 
 def get_admin_token() -> str:
     """Generate admin token for testing."""
+    config = get_config()
     return create_access_token(
-        user_id="demo-admin",
-        username="admin",
-        email="admin@retailpolicy.local",
-        role="admin"
+        user_id=config.auth.admin_user_id,
+        username=config.auth.admin_username,
+        email=config.auth.admin_email,
+        role=config.auth.admin_role
     )

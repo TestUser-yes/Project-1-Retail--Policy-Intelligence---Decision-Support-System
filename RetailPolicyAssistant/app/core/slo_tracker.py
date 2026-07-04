@@ -14,19 +14,24 @@ class SLOMetrics:
     accuracy_score: Optional[float] = None
     route_accuracy: Optional[float] = None
     escalation_rate: Optional[float] = None
+    success_rate: float = 100.0  # Percentage of queries meeting SLO
 
 
 class SLOTracker:
     """Tracks and validates SLO compliance for queries."""
 
-    # SLO targets from app/evaluation/slos.py
+    # SLO targets per capstone requirements (README.md & capstone_retail_policy_intelligence_dataset.md)
+    # Task Success Rate (TSR) ≥ 90%
+    # P95 Latency ≤ 3-6 seconds
+    # Structured SQL correctness ≥ 95%
+    # High-risk misclassification rate < 5%
     TARGETS = {
-        "latency_seconds": 2.0,
-        "p95_latency_seconds": 3.0,
-        "route_accuracy": 0.95,
-        "answer_accuracy": 0.90,
-        "risk_accuracy": 0.95,
-        "escalation_accuracy": 1.00,
+        "latency_seconds": 2.0,  # Target latency in seconds
+        "p95_latency_seconds": 3.0,  # P95 latency from capstone spec
+        "route_accuracy": 0.95,  # Query routing accuracy 95%
+        "answer_accuracy": 0.90,  # Answer quality 90% (TSR)
+        "risk_accuracy": 0.95,  # Risk classification 95%
+        "escalation_accuracy": 1.00,  # Escalation detection 100%
     }
 
     # Warning thresholds (80% of target)
@@ -99,12 +104,14 @@ class SLOTracker:
 
     def get_summary(self) -> Dict:
         """Get SLO compliance summary."""
+        compliance_rate = self.get_slo_compliance_rate()
         return {
             "total_queries": self.query_count,
             "total_escalations": self.escalation_count,
             "escalation_rate_percent": self.get_escalation_rate(),
             "average_latency_ms": self.get_average_latency(),
-            "slo_compliance_rate_percent": self.get_slo_compliance_rate(),
+            "slo_compliance_rate_percent": compliance_rate,
+            "success_rate": compliance_rate / 100.0,  # As decimal (0.0-1.0)
             "target_latency_ms": self.TARGETS["latency_seconds"] * 1000,
         }
 

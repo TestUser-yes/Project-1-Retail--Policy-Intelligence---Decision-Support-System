@@ -4,8 +4,12 @@ import { useState } from 'react';
 import { TrendingUp, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 
 export default function SLAMonitoringPage() {
+  // Constants from capstone requirements
+  const SLA_TARGET_HOURS = 24; // 24-hour SLA for compliance queries
+  const AT_RISK_THRESHOLD_HOURS = 4; // Alert when 4 hours or less remain
+
   const [slaMetrics] = useState({
-    target: 24, // hours
+    target: SLA_TARGET_HOURS,
     breached: 1,
     atRisk: 3,
     compliant: 38,

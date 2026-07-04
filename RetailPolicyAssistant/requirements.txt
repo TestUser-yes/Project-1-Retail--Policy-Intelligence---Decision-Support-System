@@ -1,6 +1,8 @@
 fastapi
 uvicorn[standard]
 
+pyyaml
+
 sqlalchemy
 alembic
 psycopg[binary]
