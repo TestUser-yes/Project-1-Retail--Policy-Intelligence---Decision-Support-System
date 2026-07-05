@@ -201,19 +201,8 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* System Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-lg border-2 border-blue-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Activity className="w-6 h-6 text-blue-600" />
-              </div>
-              <span className="text-2xl font-bold text-blue-600">{data.activeUsers}</span>
-            </div>
-            <p className="text-sm text-gray-600 font-medium">Active Users</p>
-            <p className="text-xs text-gray-500 mt-2">Current session</p>
-          </div>
-
+        {/* System Overview - Success Rate Only */}
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-4 mb-8">
           <div className="bg-white rounded-lg border-2 border-green-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center">
@@ -223,17 +212,6 @@ export default function Dashboard() {
             </div>
             <p className="text-sm text-gray-600 font-medium">Success Rate</p>
             <p className="text-xs text-gray-500 mt-2">SLO compliance</p>
-          </div>
-
-          <div className="bg-white rounded-lg border-2 border-emerald-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-emerald-600" />
-              </div>
-              <span className="text-2xl font-bold text-emerald-600">{formatCurrency(data.budgetUsed)}</span>
-            </div>
-            <p className="text-sm text-gray-600 font-medium">Budget Used</p>
-            <p className="text-xs text-gray-500 mt-2">Daily budget: ${(data.budgetUsdLimit || 100).toFixed(2)}</p>
           </div>
         </div>
 
@@ -413,10 +391,7 @@ export default function Dashboard() {
                     <td className="py-3 px-4 text-gray-700 font-mono">{query.latency.toFixed(2)}s</td>
                     <td className="py-3 px-4 text-gray-700">{formatCurrency(query.cost)}</td>
                     <td className="py-3 px-4 text-gray-600 text-xs">
-                      {query.timestamp.toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {formatTime(query.timestamp)}
                     </td>
                   </tr>
                 ))}

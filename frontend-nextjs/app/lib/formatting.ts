@@ -47,8 +47,10 @@ export const formatDateTime = (date: Date | string): string => {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
     timeZone: 'Asia/Kolkata',
-  });
+  }) + ' IST';
 };
 
 export const formatTime = (date: Date | string): string => {
@@ -57,8 +59,13 @@ export const formatTime = (date: Date | string): string => {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
+    hour12: true,
     timeZone: 'Asia/Kolkata',
-  });
+  }) + ' IST';
+};
+
+export const getCurrentTimeIST = (): string => {
+  return formatTime(new Date());
 };
 
 export const getTimeAgo = (date: Date | string): string => {
