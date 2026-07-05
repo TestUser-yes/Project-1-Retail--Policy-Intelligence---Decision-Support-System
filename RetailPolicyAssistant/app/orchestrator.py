@@ -115,13 +115,17 @@ class Orchestrator:
             cost_summary = self.cost_tracker.get_summary()
             slo_summary = self.slo_tracker.get_summary()
 
-            # Use agent's confidence score, boost slightly if successful
+            # Use agent's confidence score with minimum floor
+            # Ensure confidence never drops below 0.50 for valid responses
             if agent_confidence >= 0.85:
                 base_confidence = 0.90
-            elif agent_confidence >= 0.65:
-                base_confidence = 0.75
+            elif agent_confidence >= 0.70:
+                base_confidence = 0.80
+            elif agent_confidence >= 0.50:
+                base_confidence = 0.65
             else:
-                base_confidence = agent_confidence
+                # Minimum floor: any response with valid result gets at least 0.50
+                base_confidence = max(0.50, agent_confidence)
 
             # Build response with SLO metrics
             return {
