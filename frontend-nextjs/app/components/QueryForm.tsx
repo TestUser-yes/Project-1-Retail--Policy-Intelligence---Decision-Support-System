@@ -19,19 +19,15 @@ export default function QueryForm({ onResult, conversationId }: QueryFormProps) 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const token = localStorage.getItem('access_token');
-        if (!token) {
-          const response = await api.getToken();
-          localStorage.setItem('access_token', response.access_token);
-          setAuthenticated(true);
-          setAuthError('');
-        } else {
-          setAuthenticated(true);
-          setAuthError('');
-        }
+        // Get or refresh token
+        const response = await api.getToken();
+        localStorage.setItem('access_token', response.access_token);
+        setAuthenticated(true);
+        setAuthError('');
       } catch (err: any) {
         setAuthError('Failed to authenticate. Please refresh the page.');
         console.error('Auth error:', err);
+        setAuthenticated(false);
       }
     };
     initAuth();

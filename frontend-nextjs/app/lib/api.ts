@@ -13,18 +13,18 @@ const apiClient = axios.create({
 let tokenPromise: Promise<string> | null = null;
 
 async function ensureToken(): Promise<string> {
-  const cached = localStorage.getItem('access_token');
-  if (cached) return cached;
-
   if (!tokenPromise) {
     tokenPromise = (async () => {
       try {
+        // Always fetch fresh token to avoid expiration issues
         const response = await axios.get(`${API_URL}/token`);
         const token = response.data.access_token;
         localStorage.setItem('access_token', token);
         return token;
       } catch (error) {
         console.error('Failed to fetch token:', error);
+        localStorage.removeItem('access_token');
+        tokenPromise = null;
         throw new Error('Authentication failed');
       }
     })();
