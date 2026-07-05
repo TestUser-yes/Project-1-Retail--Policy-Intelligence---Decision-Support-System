@@ -45,14 +45,15 @@ class Orchestrator:
             self.logger.log("intent", intent_result)
 
             # Generate response based on intent
+            agent_confidence = 0.7  # Default fallback
             if intent == "sql":
-                result = self._handle_sql_query(query)
+                result, agent_confidence = self._handle_sql_query(query)
                 route = "sql"
             elif intent == "rag":
-                result = self._handle_rag_query(query)
+                result, agent_confidence = self._handle_rag_query(query)
                 route = "rag"
             else:
-                result = self._handle_hybrid_query(query)
+                result, agent_confidence = self._handle_hybrid_query(query)
                 route = "hybrid"
 
             self.logger.log("execution", {"result": result})
@@ -114,10 +115,13 @@ class Orchestrator:
             cost_summary = self.cost_tracker.get_summary()
             slo_summary = self.slo_tracker.get_summary()
 
-            # Calculate confidence based on route and result quality
-            base_confidence = 0.92 if route in ["sql", "rag"] else 0.88
-            if not result or "Error" in str(result):
-                base_confidence = max(0.4, base_confidence - 0.5)
+            # Use agent's confidence score, boost slightly if successful
+            if agent_confidence >= 0.85:
+                base_confidence = 0.90
+            elif agent_confidence >= 0.65:
+                base_confidence = 0.75
+            else:
+                base_confidence = agent_confidence
 
             # Build response with SLO metrics
             return {
@@ -257,30 +261,34 @@ class Orchestrator:
             return "rag"
         return "hybrid"
 
-    def _handle_rag_query(self, query: str) -> str:
-        """Handle RAG query - call real RAG agent."""
+    def _handle_rag_query(self, query: str) -> tuple:
+        """Handle RAG query - call real RAG agent. Returns (result_text, confidence)"""
         from app.agents.rag_agent import RAGAgent
         try:
             rag_agent = RAGAgent()
             result_dict = rag_agent.run(query)
-            return result_dict.get("result", "No policy documents found.")
+            result_text = result_dict.get("result", "No policy documents found.")
+            confidence = result_dict.get("confidence", 0.5)
+            return result_text, confidence
         except Exception as e:
             self.logger.log("error", {"error": f"RAG query failed: {str(e)}"})
-            return f"Error retrieving policy: {str(e)}"
+            return f"Error retrieving policy: {str(e)}", 0.3
 
-    def _handle_sql_query(self, query: str) -> str:
-        """Handle SQL query - call real SQL agent."""
+    def _handle_sql_query(self, query: str) -> tuple:
+        """Handle SQL query - call real SQL agent. Returns (result_text, confidence)"""
         from app.agents.sql_agent import SQLAgent
         try:
             sql_agent = SQLAgent()
             result_dict = sql_agent.run(query)
-            return result_dict.get("result", "No database results found.")
+            result_text = result_dict.get("result", "No database results found.")
+            confidence = result_dict.get("confidence", 0.5)
+            return result_text, confidence
         except Exception as e:
             self.logger.log("error", {"error": f"SQL query failed: {str(e)}"})
-            return f"Error querying database: {str(e)}"
+            return f"Error querying database: {str(e)}", 0.3
 
-    def _handle_hybrid_query(self, query: str) -> str:
-        """Handle hybrid query - combine RAG and SQL."""
+    def _handle_hybrid_query(self, query: str) -> tuple:
+        """Handle hybrid query - combine RAG and SQL. Returns (result_text, confidence)"""
         from app.agents.rag_agent import RAGAgent
         from app.agents.sql_agent import SQLAgent
         try:
@@ -292,7 +300,10 @@ class Orchestrator:
             rag_text = rag_result.get("result", "")
             sql_text = sql_result.get("result", "")
 
-            return f"Policy Analysis:\n{rag_text}\n\nDatabase Validation:\n{sql_text}"
+            # Use average of both confidence scores
+            avg_confidence = (rag_result.get("confidence", 0.5) + sql_result.get("confidence", 0.5)) / 2
+
+            return f"Policy Analysis:\n{rag_text}\n\nDatabase Validation:\n{sql_text}", avg_confidence
         except Exception as e:
             self.logger.log("error", {"error": f"Hybrid query failed: {str(e)}"})
-            return f"Error in hybrid analysis: {str(e)}"
+            return f"Error in hybrid analysis: {str(e)}", 0.2
