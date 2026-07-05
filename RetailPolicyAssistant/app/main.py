@@ -91,8 +91,10 @@ async def rate_limit_middleware(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",  # Next.js dev server (primary)
+        "http://localhost:3000",  # Next.js dev server
+        "http://localhost:3001",  # Next.js dev server (port 3001)
         "http://127.0.0.1:3000",  # Next.js localhost
+        "http://127.0.0.1:3001",  # Next.js localhost (port 3001)
         "http://localhost:5173",  # Vite dev server (fallback)
         "http://127.0.0.1:5173",  # Vite localhost
     ],
@@ -101,6 +103,9 @@ app.add_middleware(
     allow_headers=["*", "Authorization"],
 )
 
+from app.routers.observability import router as observability_router
+
 app.include_router(router)
 app.include_router(dashboard_router)
+app.include_router(observability_router)
 

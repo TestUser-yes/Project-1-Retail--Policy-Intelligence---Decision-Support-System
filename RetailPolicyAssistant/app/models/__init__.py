@@ -1,9 +1,8 @@
 """Database models - SQLAlchemy ORM definitions."""
 
+from app.models.base import Base
 from app.models.models import (
-    Base,
     User,
-    PolicyDocument,
     QueryLog,
     AuditLog,
     ComplianceReview,
@@ -14,6 +13,7 @@ from app.models.models import (
     AgentTrace,
     SystemConfig,
 )
+from app.models.policy import PolicyDocument  # Import correct PolicyDocument with metadata
 from app.models.ai_queries import AIQuery
 from app.models.evaluation import EvaluationResult
 

@@ -1,10 +1,8 @@
 """SQLAlchemy models for all capstone-required tables."""
 
 from sqlalchemy import Column, String, Text, DateTime, Float, Boolean, Integer, ForeignKey, JSON
-from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
-
-Base = declarative_base()
+from app.models.base import Base
 
 
 class User(Base):
@@ -15,19 +13,6 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     name = Column(String(255), nullable=False)
     role = Column(String(50), default="viewer")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-
-class PolicyDocument(Base):
-    """Policy documents for RAG."""
-    __tablename__ = "policy_documents"
-    
-    id = Column(String(36), primary_key=True)
-    title = Column(String(500), nullable=False)
-    content = Column(Text, nullable=False)
-    category = Column(String(100))
-    embedding = Column(Text)  # Vector embedding
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -22,12 +22,6 @@ export default function Navbar() {
               Dashboard
             </Link>
             <Link
-              href="/api-docs"
-              className="px-4 py-2 text-gray-700 hover:text-blue-600 font-semibold transition"
-            >
-              API Docs
-            </Link>
-            <Link
               href="/query"
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition"
             >

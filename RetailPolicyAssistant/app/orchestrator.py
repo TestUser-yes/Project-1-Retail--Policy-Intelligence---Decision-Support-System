@@ -221,16 +221,27 @@ class Orchestrator:
         is_relevant: bool,
         risk_level: str,
     ) -> tuple[bool, str]:
-        """Determine if query should be escalated.
+        """Determine if query should be escalated to human review.
+
+        Escalation rules:
+        - Out-of-scope queries: Always escalate
+        - High-risk queries: Always escalate (compliance/security concerns)
+        - Medium-risk queries: Escalate (requires approval)
+        - Low-risk routine queries: No escalation needed
 
         Returns:
             (escalate: bool, reason: str)
         """
         if not is_relevant:
-            return True, "Query is out-of-scope for this system"
+            return True, "Query is out-of-scope for this system - escalate to human review"
+
         if risk_level == "high":
-            return True, "Query flagged as high-risk, requires compliance review"
-        return False, ""
+            return True, "Query flagged as high-risk - requires compliance review"
+
+        if risk_level == "medium":
+            return True, "Query involves approval/compliance review - escalate for authorization"
+
+        return False, "Routine query - no escalation needed"
 
     def _detect_intent(self, query: str) -> str:
         """Detect query intent from keywords."""

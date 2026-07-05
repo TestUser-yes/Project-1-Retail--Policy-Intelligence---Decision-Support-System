@@ -85,6 +85,31 @@ export interface AskResponse {
   recommendation?: string;
 }
 
+export interface DashboardData {
+  totalQueries: number;
+  avgLatency: number;
+  escalationRate: number;
+  budgetUsed: number;
+  budgetUsdLimit: number;
+  budgetUsdUsed: number;
+  budgetRemaining: number;
+  activeUsers: number;
+  successRate: number;
+  queryByRoute: { rag: number; sql: number; hybrid: number };
+  queryByRisk: { low: number; medium: number; high: number };
+  topPolicies: Array<{ name: string; count: number }>;
+  topIntents: Array<{ name: string; count: number }>;
+  recentQueries: any[];
+  hourlyTrends: Array<{ time: string; queries: number; latency: number }>;
+  vendorStats: { total: number; high_risk: number };
+  sloMetrics: {
+    success_rate: number;
+    avg_latency_ms: number;
+    target_latency_ms: number;
+    escalation_count: number;
+  };
+}
+
 
 export const api = {
   async getToken() {
@@ -109,6 +134,11 @@ export const api = {
     const response = await apiClient.get(
       `/conversations/${conversationId}/history`
     );
+    return response.data;
+  },
+
+  async getDashboard(): Promise<DashboardData> {
+    const response = await apiClient.get('/api/dashboard');
     return response.data;
   },
 };

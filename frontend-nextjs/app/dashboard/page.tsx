@@ -73,13 +73,7 @@ export default function Dashboard() {
     const loadDashboard = async () => {
       try {
         // Fetch real dashboard data from backend API
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const response = await fetch(`${apiUrl}/api/dashboard`);
-        if (!response.ok) {
-          throw new Error(`Dashboard API error: ${response.status}`);
-        }
-
-        const dashboardData = await response.json();
+        const dashboardData = await api.getDashboard();
 
         // Transform backend response to frontend format
         const formattedData: DashboardData = {
@@ -164,20 +158,6 @@ export default function Dashboard() {
           >
             <Zap className="w-5 h-5" />
             Ask Question
-          </Link>
-          <Link
-            href="/api-docs"
-            className="px-6 py-3 bg-slate-200 text-gray-900 rounded-lg hover:bg-slate-300 font-semibold transition inline-flex items-center gap-2"
-          >
-            <FileText className="w-5 h-5" />
-            API Documentation
-          </Link>
-          <Link
-            href="/admin"
-            className="px-6 py-3 border-2 border-gray-300 text-gray-900 rounded-lg hover:bg-gray-50 font-semibold transition inline-flex items-center gap-2"
-          >
-            <BarChart3 className="w-5 h-5" />
-            Admin Panel
           </Link>
           <Link
             href="/compliance"

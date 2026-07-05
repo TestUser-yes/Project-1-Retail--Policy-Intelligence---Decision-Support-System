@@ -64,6 +64,11 @@ risk_thresholds:
       - pending
       - under review
       - cross-border
+      - review
+      - policy change
+      - requirement
+      - authorization
+      - verification
   high:
     confidence_min: 0.0
     keywords:
@@ -79,6 +84,9 @@ risk_thresholds:
       - suspended
       - rejected
       - urgent
+      - delete
+      - terminate
+      - sanction
 
 cost:
   provider: ollama  # ollama, openai, anthropic
