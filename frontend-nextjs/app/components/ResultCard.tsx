@@ -113,7 +113,7 @@ export default function ResultCard({ result }: ResultCardProps) {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Route */}
         <div className="card p-6 hover:shadow-xl transition">
           <div className="flex items-center gap-2 mb-2">
@@ -155,6 +155,19 @@ export default function ResultCard({ result }: ResultCardProps) {
           </div>
           <p className="text-2xl font-bold text-purple-600">
             {result.intent?.intent?.toUpperCase()}
+          </p>
+        </div>
+
+        {/* Confidence */}
+        <div className="card p-6 hover:shadow-xl transition bg-gradient-to-br from-emerald-50 to-teal-50">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle className="w-5 h-5 text-emerald-600" />
+            <p className="text-sm font-semibold text-gray-600 uppercase">
+              Confidence
+            </p>
+          </div>
+          <p className="text-3xl font-bold text-emerald-600">
+            {((result.confidence_score || 0) * 100).toFixed(0)}%
           </p>
         </div>
       </div>

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import MetricCard from '@/app/components/MetricCard';
 import SystemHealth from '@/app/components/SystemHealth';
-import { formatCurrency, formatMilliseconds, formatNumber } from '@/app/lib/formatting';
+import { formatCurrency, formatMilliseconds, formatNumber, formatTime } from '@/app/lib/formatting';
 import { generatePieChartData, COLORS } from '@/app/lib/charts';
 import {
   PieChart,

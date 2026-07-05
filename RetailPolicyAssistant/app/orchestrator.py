@@ -114,6 +114,11 @@ class Orchestrator:
             cost_summary = self.cost_tracker.get_summary()
             slo_summary = self.slo_tracker.get_summary()
 
+            # Calculate confidence based on route and result quality
+            base_confidence = 0.92 if route in ["sql", "rag"] else 0.88
+            if not result or "Error" in str(result):
+                base_confidence = max(0.4, base_confidence - 0.5)
+
             # Build response with SLO metrics
             return {
                 "query": query,
@@ -141,7 +146,7 @@ class Orchestrator:
                     "slo_status": slo_metrics.slo_status,
                 },
                 "slo_summary": slo_summary,
-                "confidence_score": 0.85,
+                "confidence_score": round(base_confidence, 2),
                 "sources": ["Policy Database", "Vendor Records"],
                 "sql_validation": "Valid SQL generated",
                 "recommendation": "Review with compliance officer before implementation",
@@ -257,8 +262,8 @@ class Orchestrator:
         from app.agents.rag_agent import RAGAgent
         try:
             rag_agent = RAGAgent()
-            result = rag_agent.run(query)
-            return result.get("result", "No policy documents found.")
+            result_dict = rag_agent.run(query)
+            return result_dict.get("result", "No policy documents found.")
         except Exception as e:
             self.logger.log("error", {"error": f"RAG query failed: {str(e)}"})
             return f"Error retrieving policy: {str(e)}"
@@ -268,8 +273,8 @@ class Orchestrator:
         from app.agents.sql_agent import SQLAgent
         try:
             sql_agent = SQLAgent()
-            result = sql_agent.run(query)
-            return result.get("result", "No database results found.")
+            result_dict = sql_agent.run(query)
+            return result_dict.get("result", "No database results found.")
         except Exception as e:
             self.logger.log("error", {"error": f"SQL query failed: {str(e)}"})
             return f"Error querying database: {str(e)}"

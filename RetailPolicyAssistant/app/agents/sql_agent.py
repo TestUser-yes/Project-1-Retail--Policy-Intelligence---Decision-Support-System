@@ -1,31 +1,28 @@
 """SQL Agent - Text2SQL query execution."""
 
-from app.agents.base_agent import BaseAgent, AgentInput, AgentOutput
 from app.sql import answer_sql
 
 
-class SQLAgent(BaseAgent):
+class SQLAgent:
     """Executes SQL queries with Text2SQL translation."""
 
     def __init__(self):
-        super().__init__(name="sql_agent", description="SQL executor")
+        self.name = "sql_agent"
 
-    async def _execute(self, agent_input: AgentInput) -> AgentOutput:
-        """Execute SQL query."""
-        query = agent_input.query
-
+    def run(self, query: str) -> dict:
+        """Execute SQL query synchronously."""
         try:
             result = answer_sql(query)
-            confidence = 0.85 if result else 0.5
+            confidence = 0.88 if result and "Error" not in str(result) else 0.3
 
-            return AgentOutput(
-                success=True,
-                data={"result": result},
-                confidence=confidence,
-            )
+            return {
+                "result": result,
+                "sources": ["Database"],
+                "confidence": confidence,
+            }
         except Exception as e:
-            return AgentOutput(
-                success=False,
-                error=str(e),
-                confidence=0.0,
-            )
+            return {
+                "result": f"SQL Error: {str(e)}",
+                "sources": [],
+                "confidence": 0.0,
+            }
