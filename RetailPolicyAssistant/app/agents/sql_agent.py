@@ -12,11 +12,21 @@ class SQLAgent:
     def run(self, query: str) -> dict:
         """Execute SQL query synchronously."""
         try:
-            result = answer_sql(query)
-            confidence = 0.88 if result and "Error" not in str(result) else 0.3
+            sql_result = answer_sql(query)
+            # answer_sql returns dict with 'result' and 'confidence' keys
+            result_text = sql_result.get("result", "No results found")
+            sql_confidence = sql_result.get("confidence", 0.5)
+
+            # Use SQL query confidence, boost if successful
+            if sql_confidence >= 0.9:
+                confidence = 0.90
+            elif "Error" in str(result_text):
+                confidence = 0.3
+            else:
+                confidence = 0.85
 
             return {
-                "result": result,
+                "result": result_text,
                 "sources": ["Database"],
                 "confidence": confidence,
             }
