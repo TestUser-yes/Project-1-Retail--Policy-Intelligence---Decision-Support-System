@@ -162,33 +162,37 @@ class CostTracker:
         summary = self.get_summary()
         checks = self.check_budget()
 
-        report = f"""
-╔════════════════════════════════════════╗
-║         COST TRACKING REPORT           ║
-╚════════════════════════════════════════╝
+        daily_limit_status = "OK" if checks['daily_limit_ok'] else "EXCEEDED"
+        monthly_limit_status = "OK" if checks['monthly_limit_ok'] else "EXCEEDED"
+        alert_status = "YES" if checks['alert_threshold'] else "NO"
 
-📊 Usage Statistics:
+        report = f"""
+========================================
+        COST TRACKING REPORT
+=====================================
+
+USAGE STATISTICS:
   Total Queries: {summary.total_queries}
   Total Cost: ${summary.total_cost:.2f}
   Avg Cost/Query: ${summary.avg_cost_per_query:.4f}
 
-📈 Time-Based Metrics:
+TIME-BASED METRICS:
   Queries This Hour: {summary.queries_this_hour}
   Queries Today: {summary.queries_today}
   Queries This Month: {summary.queries_this_month}
 
-💰 Cost by Period:
+COST BY PERIOD:
   Daily Cost: ${summary.daily_cost:.2f} / ${self.budget.daily_limit:.2f}
   Monthly Cost: ${summary.monthly_cost:.2f} / ${self.budget.monthly_limit:.2f}
 
-🎯 Budget Status:
+BUDGET STATUS:
   Daily Usage: {summary.budget_usage_percent:.1f}%
-  Daily Limit OK: {'✅' if checks['daily_limit_ok'] else '❌'}
-  Monthly Limit OK: {'✅' if checks['monthly_limit_ok'] else '❌'}
-  Alert Triggered: {'⚠️ YES' if checks['alert_threshold'] else '✅ NO'}
+  Daily Limit: {daily_limit_status}
+  Monthly Limit: {monthly_limit_status}
+  Alert Triggered: {alert_status}
 
-📝 Current Model: Ollama (Local/Free)
-   Future: Ready for Claude API or OpenAI integration
+CURRENT MODEL: Ollama (Local/Free)
+Future Support: Ready for Claude API or OpenAI integration
 """
         return report
 

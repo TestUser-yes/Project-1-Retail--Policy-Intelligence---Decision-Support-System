@@ -37,37 +37,57 @@ class OllamaLLM(BaseLLM):
         except Exception:
             return {"error": "Invalid JSON", "raw_output": content}
 
-    def generate_rag_answer(self, question, context):
-        messages = [
-            {
-                "role": "system",
-                "content": """
-You are an enterprise Retail Policy Assistant.
-You MUST answer ONLY from the supplied context.
-IMPORTANT RULES
-1. Never use any outside knowledge.
-2. Never infer missing information.
-3. Never complete broken tables.
-4. Never guess policy values.
-5. Never guess approvals.
-6. Never rewrite numbers.
-7. Never rewrite currency.
-8. If multiple chunks disagree, state exactly what each chunk says.
-9. If information is incomplete because the table is split, reply exactly:
-"I couldn't find that information in the provided policy documents."
-10. Quote the exact sentence before explaining.
-11. At the end write
-Source:DocumentPage
-""",
-            },
-            {
-                "role": "user",
-                "content": f"""Below is the ONLY policy context you may use.
-=====================POLICY CONTEXT=====================
-{context}
-=====================QUESTION=====================
-{question}
-Remember:Never answer using anything outside the policy context.""",
-            },
-        ]
-        return self.chat(messages)
+    def generate_rag_answer(self, question: str, context: str, template_pattern: str = "basic"):
+        """Generate a grounded answer using retrieved policy context.
+
+        Uses standardized RAG templates from app.prompts (single source of truth).
+
+        Args:
+            question: User's actual query
+            context: Retrieved documents from retrieval pipeline
+            template_pattern: Which RAG template to use:
+                - "basic" (default): Simple instructions with context + question
+                - "strict_grounding": Prevents hallucinations with explicit fallback
+                - "structured_citation": Includes source citations
+                - "multi_chunk_synthesis": Combines multiple chunks
+
+        Returns:
+            LLM response text
+
+        Raises:
+            ValueError: If context or question is empty
+            KeyError: If template_pattern not found
+        """
+        if not context or not context.strip():
+            raise ValueError("Context cannot be empty for RAG generation")
+        if not question or not question.strip():
+            raise ValueError("Question cannot be empty for RAG generation")
+
+        from app.prompts import get_rag_template
+
+        template = get_rag_template(template_pattern)
+
+        # Debug logging
+        print("\n" + "=" * 60)
+        print(f"RAG GENERATION STARTED")
+        print(f"Template Pattern: {template.get_name()}")
+        print(f"Context Length: {len(context)} characters")
+        print(f"Question: {question}")
+        print("=" * 60)
+
+        # Format message using template
+        messages = template.format_prompt(context, question)
+
+        print("\nDEBUG: Retrieved Context (first 500 chars):")
+        print(context[:500] + "..." if len(context) > 500 else context)
+        print("\n" + "=" * 60)
+
+        try:
+            response = self.chat(messages)
+            print(f"LLM Response Length: {len(response)} characters")
+            print("=" * 60 + "\n")
+            return response
+        except Exception as e:
+            print(f"\nRAG GENERATION ERROR: {e}")
+            print("=" * 60 + "\n")
+            raise

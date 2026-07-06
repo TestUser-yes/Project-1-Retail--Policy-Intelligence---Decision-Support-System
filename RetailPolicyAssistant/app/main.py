@@ -14,6 +14,28 @@ app = FastAPI(
     description="Intelligent policy compliance system with auth, cost tracking, memory, RBAC, guardrails, caching, and rate limiting",
 )
 
+# Enable CORS FIRST (before other middleware)
+# Allow all localhost:30xx ports since Next.js auto-assigns ports
+import re
+cors_origins = []
+# Add all localhost ports from 3000-3099 for Next.js dev flexibility
+for port in range(3000, 3100):
+    cors_origins.append(f"http://localhost:{port}")
+    cors_origins.append(f"http://127.0.0.1:{port}")
+# Add Vite fallback
+cors_origins.extend([
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*", "Authorization"],
+)
+
 # Request tracing middleware
 @app.middleware("http")
 async def tracing_middleware(request: Request, call_next):
@@ -58,7 +80,7 @@ async def tracing_middleware(request: Request, call_next):
 async def rate_limit_middleware(request: Request, call_next):
     """Check rate limits on each request."""
     # Skip rate limiting for public endpoints
-    if request.url.path in ["/health", "/token", "/docs", "/openapi.json"]:
+    if request.url.path in ["/health", "/token", "/docs", "/openapi.json", "/api/dashboard"]:
         return await call_next(request)
 
     # Try to extract user ID (from query params or header for demo)
@@ -85,23 +107,6 @@ async def rate_limit_middleware(request: Request, call_next):
 
     return response
 
-
-# Enable CORS for Next.js frontend (development mode)
-# In production, replace with actual frontend domain
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Next.js dev server
-        "http://localhost:3001",  # Next.js dev server (port 3001)
-        "http://127.0.0.1:3000",  # Next.js localhost
-        "http://127.0.0.1:3001",  # Next.js localhost (port 3001)
-        "http://localhost:5173",  # Vite dev server (fallback)
-        "http://127.0.0.1:5173",  # Vite localhost
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*", "Authorization"],
-)
 
 from app.routers.observability import router as observability_router
 

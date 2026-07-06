@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Final Dashboard Test</title>
+    <style>
+        body { font-family: Arial; padding: 40px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { color: #1976d2; }
+        .metric { display: inline-block; margin: 15px; padding: 20px; background: #e8f5e9; border-radius: 4px; min-width: 120px; text-align: center; }
+        .metric strong { display: block; margin-bottom: 8px; }
+        .error { color: #d32f2f; background: #ffebee; padding: 20px; border-radius: 4px; border-left: 4px solid #d32f2f; }
+        .success { color: #388e3c; background: #e8f5e9; padding: 20px; border-radius: 4px; border-left: 4px solid #388e3c; }
+        .loading { color: #1976d2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✓ Dashboard Final Test</h1>
+        <div id="status" class="loading">Connecting to API...</div>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function test() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                statusDiv.textContent = 'Fetching dashboard data...';
+                
+                const response = await fetch('http://localhost:8001/api/dashboard', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                statusDiv.innerHTML = `<p class="loading">Response Status: ${response.status}</p>`;
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                statusDiv.innerHTML = '<p class="success">✓ Dashboard Loaded Successfully!</p>';
+                
+                resultDiv.innerHTML = `
+                    <h2>Dashboard Metrics</h2>
+                    <div class="metric">
+                        <strong>${data.totalQueries}</strong>
+                        Total Queries
+                    </div>
+                    <div class="metric">
+                        <strong>${data.successRate}%</strong>
+                        Success Rate
+                    </div>
+                    <div class="metric">
+                        <strong>${data.avgLatency}s</strong>
+                        Avg Latency
+                    </div>
+                    <div class="metric">
+                        <strong>${data.escalationRate}%</strong>
+                        Escalation
+                    </div>
+                    
+                    <h2>Query Routes</h2>
+                    <div class="metric">
+                        <strong>RAG</strong>
+                        ${data.queryByRoute.rag}
+                    </div>
+                    <div class="metric">
+                        <strong>SQL</strong>
+                        ${data.queryByRoute.sql}
+                    </div>
+                    <div class="metric">
+                        <strong>Hybrid</strong>
+                        ${data.queryByRoute.hybrid}
+                    </div>
+                `;
+                
+            } catch (error) {
+                statusDiv.className = 'error';
+                statusDiv.innerHTML = `✗ Error: ${error.message}`;
+                console.error('Error:', error);
+            }
+        }
+        
+        test();
+    </script>
+</body>
+</html>

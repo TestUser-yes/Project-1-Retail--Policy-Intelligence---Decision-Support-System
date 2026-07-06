@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f0f0f0; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .metric { display: inline-block; margin: 10px; padding: 15px; background: #e3f2fd; border-radius: 4px; min-width: 150px; }
+        .error { color: red; padding: 20px; background: #ffebee; border-radius: 4px; }
+        .success { color: green; padding: 20px; background: #e8f5e9; border-radius: 4px; }
+        h1 { color: #1976d2; }
+        .loading { color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dashboard Test</h1>
+        <div id="result" class="loading">Loading dashboard data...</div>
+    </div>
+
+    <script>
+        async function loadDashboard() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const response = await fetch('http://localhost:8001/api/dashboard');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                resultDiv.className = 'success';
+                resultDiv.innerHTML = `
+                    <h2>✓ Dashboard Loaded Successfully!</h2>
+                    <div class="metric">
+                        <strong>Total Queries</strong><br>
+                        ${data.totalQueries}
+                    </div>
+                    <div class="metric">
+                        <strong>Success Rate</strong><br>
+                        ${data.successRate}%
+                    </div>
+                    <div class="metric">
+                        <strong>Avg Latency</strong><br>
+                        ${data.avgLatency}s
+                    </div>
+                    <div class="metric">
+                        <strong>Escalation Rate</strong><br>
+                        ${data.escalationRate}%
+                    </div>
+                    <h3>Query Routes</h3>
+                    <div class="metric">RAG: ${data.queryByRoute.rag}</div>
+                    <div class="metric">SQL: ${data.queryByRoute.sql}</div>
+                    <div class="metric">Hybrid: ${data.queryByRoute.hybrid}</div>
+                `;
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <h2>✗ Failed to Load Dashboard</h2>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p><strong>API URL:</strong> http://localhost:8001/api/dashboard</p>
+                    <p><strong>Frontend:</strong> http://localhost:3002</p>
+                    <p>Check browser console for more details.</p>
+                `;
+                console.error('Dashboard error:', error);
+            }
+        }
+        
+        loadDashboard();
+    </script>
+</body>
+</html>

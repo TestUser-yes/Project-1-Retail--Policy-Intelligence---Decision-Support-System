@@ -32,7 +32,7 @@ echo.
 if not exist .env.local (
     echo 📝 Creating .env.local...
     (
-        echo NEXT_PUBLIC_API_URL=http://localhost:8000
+        echo NEXT_PUBLIC_API_URL=http://localhost:8001
     ) > .env.local
     echo ✅ Created .env.local
 )
@@ -42,7 +42,7 @@ echo ===========================================================
 echo ✅ Setup complete!
 echo.
 echo Next steps:
-echo 1. Make sure backend is running on http://localhost:8000
+echo 1. Make sure backend is running on http://localhost:8001
 echo 2. Run: npm run dev
 echo 3. Open: http://localhost:3000
 echo.

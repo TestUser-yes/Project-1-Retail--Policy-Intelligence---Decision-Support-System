@@ -21,7 +21,7 @@ export default function ComplianceDashboard() {
 
   const fetchStats = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
       const dashboardResponse = await fetch(`${apiUrl}/api/dashboard`);
       if (dashboardResponse.ok) {
         const data = await dashboardResponse.json();

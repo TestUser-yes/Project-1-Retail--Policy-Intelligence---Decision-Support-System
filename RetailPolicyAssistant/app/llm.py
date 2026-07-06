@@ -173,39 +173,61 @@ OUTPUT FORMAT (STRICT JSON ONLY):
         }
 
     # ---------------------------------------------------------
-    # 4. RAG ANSWER GENERATION
+    # 4. RAG ANSWER GENERATION (with standardized templates)
     # ---------------------------------------------------------
-    def generate_rag_answer(self, question: str, context: str):
-        """
-        Generate a grounded answer using retrieved policy context.
-        """
-        print("=" * 50)
-        print("Context length:", len(context))
-        print("=" * 50)
+    def generate_rag_answer(self, question: str, context: str, template_pattern: str = "basic"):
+        """Generate a grounded answer using retrieved policy context.
 
-        messages = [
-            {
-                "role": "system",
-                "content": """You are an enterprise Retail Policy Assistant.
-Answer ONLY using the supplied policy context.
-Rules:
-- Never invent information.
-- If the answer is not in the context, say: "I couldn't find that information in the available policy documents."
-- Keep answers concise and professional.
-- Mention policy names only if relevant.""",
-            },
-            {
-                "role": "user",
-                "content": f"""Policy Context:{context}
-----------------------------
-Question:{question}""",
-            },
-        ]
+        Uses standardized RAG templates from app.prompts (single source of truth).
+
+        Args:
+            question: User's actual query
+            context: Retrieved documents from retrieval pipeline
+            template_pattern: Which RAG template to use:
+                - "basic" (default): Simple instructions with context + question
+                - "strict_grounding": Prevents hallucinations with explicit fallback
+                - "structured_citation": Includes source citations
+                - "multi_chunk_synthesis": Combines multiple chunks
+
+        Returns:
+            LLM response text
+
+        Raises:
+            ValueError: If context or question is empty
+            KeyError: If template_pattern not found
+        """
+        if not context or not context.strip():
+            raise ValueError("Context cannot be empty for RAG generation")
+        if not question or not question.strip():
+            raise ValueError("Question cannot be empty for RAG generation")
+
+        from app.prompts import get_rag_template
+
+        template = get_rag_template(template_pattern)
+
+        # Debug logging
+        print("\n" + "=" * 60)
+        print(f"RAG GENERATION STARTED")
+        print(f"Template Pattern: {template.get_name()}")
+        print(f"Context Length: {len(context)} characters")
+        print(f"Question: {question}")
+        print("=" * 60)
+
+        # Format message using template
+        messages = template.format_prompt(context, question)
+
+        print("\nDEBUG: Retrieved Context (first 500 chars):")
+        print(context[:500] + "..." if len(context) > 500 else context)
+        print("\n" + "=" * 60)
+
         try:
-            return self.chat(messages)
+            response = self.chat(messages)
+            print(f"LLM Response Length: {len(response)} characters")
+            print("=" * 60 + "\n")
+            return response
         except Exception as e:
-            print("\nLLM ERROR:")
-            print(e)
+            print(f"\nRAG GENERATION ERROR: {e}")
+            print("=" * 60 + "\n")
             raise
 
     # ---------------------------------------------------------

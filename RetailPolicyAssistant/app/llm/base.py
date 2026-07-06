@@ -11,5 +11,12 @@ class BaseLLM(ABC):
         pass
 
     @abstractmethod
-    def generate_rag_answer(self, question: str, context: str):
+    def generate_rag_answer(self, question: str, context: str, template_pattern: str = "basic"):
+        """Generate answer using RAG template.
+
+        Args:
+            question: User's query
+            context: Retrieved documents
+            template_pattern: Which template pattern to use (basic, strict_grounding, etc.)
+        """
         pass

@@ -53,14 +53,20 @@ class RAGPipeline:
         }
 
     async def _generate_answer(self, query: str, context: str) -> str:
-        """Generate answer from context using LLM."""
-        prompt = f"""Based on this context, answer the query:
+        """Generate answer from context using LLM with standardized RAG template from app.prompts."""
+        if not context or not context.strip():
+            return "No relevant context available to answer the query."
 
-Context:
-{context}
+        print("\n" + "=" * 60)
+        print("RAG PIPELINE: GENERATING ANSWER")
+        print(f"Query: {query}")
+        print(f"Context chunks: {context.count('DOCUMENT')}")
+        print("=" * 60)
 
-Query: {query}
-
-Answer:"""
-        # TODO: Implement LLM call
-        return ""
+        try:
+            # Use standardized RAG template from app.prompts
+            answer = await self.llm.generate_rag_answer(query, context, template_pattern="basic")
+            return answer
+        except Exception as e:
+            print(f"Error generating answer: {e}")
+            return f"Unable to generate answer: {str(e)}"

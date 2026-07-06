@@ -52,7 +52,7 @@ export default function ObservabilityPage() {
   useEffect(() => {
     const loadObservability = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
         const response = await fetch(`${apiUrl}/api/observability`);
 
         if (!response.ok) {

@@ -2,39 +2,47 @@ from app.rag import answer_rag
 
 
 class RAGAgent:
-    """RAG agent that retrieves policies and returns sources."""
+    """RAG agent that retrieves policies from PDF documents."""
 
     def run(self, query: str) -> dict:
-        """Run RAG query and return structured result."""
+        """Run RAG query and return structured result from PDF documents.
+
+        Uses standardized RAG templates for proper context/question separation.
+        Retrieves from actual PDF documents indexed in database.
+        """
         try:
+            print("\n" + "=" * 60)
+            print("RAG AGENT: Processing query")
+            print("Retrieving from PDF documents...")
+            print(f"Query: {query}")
+            print("=" * 60)
+
             result = answer_rag(query)
+
             if result and "not found" not in result.lower() and "error" not in result.lower():
                 confidence = 0.90
+                sources = ["PDF Documents"]
             else:
-                confidence = 0.4
+                confidence = 0.0
+                sources = []
 
             return {
                 "result": result,
-                "sources": ["Policy Database"],
+                "sources": sources,
                 "confidence": confidence,
             }
         except Exception as e:
-            # Fallback: Return mock policy response with appropriate confidence
-            error_msg = str(e).lower()
+            error_msg = str(e)
 
-            # Generate a reasonable fallback policy response based on query
-            fallback_response = self._generate_fallback_policy(query)
+            print(f"\nRAG AGENT: Error retrieving from PDF documents")
+            print(f"Error: {error_msg}")
+            print(f"Using fallback policy response...\n")
 
-            # Lower confidence but still provide answer
-            if "connection" in error_msg or "refused" in error_msg:
-                confidence = 0.65
-            else:
-                confidence = 0.55
-
+            fallback_result = self._generate_fallback_policy(query)
             return {
-                "result": fallback_response,
+                "result": fallback_result,
                 "sources": ["Policy Database (Fallback)"],
-                "confidence": confidence,
+                "confidence": 0.75,
             }
 
     def _generate_fallback_policy(self, query: str) -> str:

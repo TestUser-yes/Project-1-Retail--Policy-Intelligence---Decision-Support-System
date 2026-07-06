@@ -58,7 +58,7 @@ def index_documents() -> None:
 
         db.commit()
 
-        print("✅ Document indexing completed.")
+        print("[SUCCESS] Document indexing completed.")
 
     except Exception:
         db.rollback()

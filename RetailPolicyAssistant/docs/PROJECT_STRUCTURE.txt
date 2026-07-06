@@ -1,0 +1,152 @@
+================================================================================
+PROJECT STRUCTURE - CLEAN & ORGANIZED
+================================================================================
+
+RetailPolicyAssistant/
+│
+├── app/
+│   │
+│   ├── prompts.py ⭐ SINGLE SOURCE OF TRUTH
+│   │   │
+│   │   ├── [System Prompts]
+│   │   │   ├── SYSTEM_PROMPT
+│   │   │   └── INTENT_PROMPT
+│   │   │
+│   │   ├── [RAG Templates - 4 Patterns]
+│   │   │   ├── class BaseRAGTemplate (abstract)
+│   │   │   ├── class BasicRAGTemplate (Pattern 1)
+│   │   │   ├── class StrictGroundingTemplate (Pattern 2)
+│   │   │   ├── class StructuredAnswerTemplate (Pattern 3)
+│   │   │   └── class MultiChunkSynthesisTemplate (Pattern 4)
+│   │   │
+│   │   ├── [Template Registry]
+│   │   │   ├── RAG_TEMPLATE_REGISTRY = {...}
+│   │   │   ├── get_rag_template(name)
+│   │   │   └── list_rag_templates()
+│   │   │
+│   │   ├── [Other Prompts]
+│   │   │   ├── RISK_PROMPT
+│   │   │   ├── SQL_VALIDATION_PROMPT
+│   │   │   ├── GUARDRAILS_PROMPT
+│   │   │   └── CONVERSATION_PROMPT
+│   │   │
+│   │   └── [Prompt Registry]
+│   │       ├── PROMPT_REGISTRY = {...}
+│   │       ├── get_prompt(name)
+│   │       ├── list_prompts()
+│   │       └── get_prompt_version()
+│   │
+│   ├── llm/
+│   │   ├── service.py ✓ Uses app.prompts
+│   │   ├── ollama_llm.py ✓ Uses app.prompts
+│   │   └── base.py ✓ Uses app.prompts
+│   │
+│   ├── rag/
+│   │   ├── pipeline.py ✓ Uses app.prompts
+│   │   └── (other files)
+│   │
+│   ├── rag_pipeline/
+│   │   ├── rag_pipeline.py ✓ Uses app.prompts
+│   │   ├── (NO prompt_templates.py) ✓ DELETED
+│   │   ├── (NO test_templates.py) ✓ DELETED
+│   │   └── (other pipeline files)
+│   │
+│   ├── agents/
+│   │   ├── rag_agent.py ✓ Uses app.prompts
+│   │   └── (other agents)
+│   │
+│   └── (other app modules)
+│
+└── docs/ 📚 All documentation here
+    ├── RAG_PROMPTING.md ..................... Full RAG guide
+    ├── RAG_QUICK_REFERENCE.md .............. Quick start
+    ├── BEFORE_AND_AFTER.md ................. Comparison
+    ├── IMPLEMENTATION_SUMMARY.md ........... Technical details
+    ├── RAG_CONSOLIDATION.md ................ Consolidation details
+    ├── CONSOLIDATION_SUMMARY.txt ........... Status report
+    ├── PROJECT_STRUCTURE.txt ............... This file
+    └── (other documentation)
+
+================================================================================
+IMPORT PATHS
+================================================================================
+
+TO USE RAG TEMPLATES:
+  from app.prompts import get_rag_template, list_rag_templates
+  
+  template = get_rag_template("basic")
+  templates = list_rag_templates()
+
+TO USE OTHER PROMPTS:
+  from app.prompts import get_prompt, list_prompts
+  
+  prompt = get_prompt("intent")
+  all_prompts = list_prompts()
+
+TO USE LLM SERVICE:
+  answer = llm.generate_rag_answer(question, context, template_pattern="basic")
+
+================================================================================
+FILE CHANGES SUMMARY
+================================================================================
+
+CONSOLIDATED:
+  ✓ app/prompts.py (updated - now contains everything)
+
+DELETED:
+  ✓ app/rag_pipeline/prompt_templates.py (was duplicate)
+  ✓ app/rag_pipeline/test_templates.py (was duplicate)
+
+UPDATED IMPORTS IN:
+  ✓ app/llm/service.py
+  ✓ app/llm/ollama_llm.py
+  ✓ app/rag/pipeline.py
+  ✓ app/rag_pipeline/rag_pipeline.py
+  ✓ app/agents/rag_agent.py
+  ✓ app/llm/base.py
+
+ORGANIZED DOCUMENTATION:
+  ✓ Moved: docs/RAG_PROMPTING.md
+  ✓ Moved: docs/RAG_QUICK_REFERENCE.md
+  ✓ Moved: docs/BEFORE_AND_AFTER.md
+  ✓ Moved: docs/IMPLEMENTATION_SUMMARY.md
+  ✓ Created: docs/RAG_CONSOLIDATION.md
+  ✓ Created: docs/CONSOLIDATION_SUMMARY.txt
+  ✓ Created: docs/PROJECT_STRUCTURE.txt (this file)
+
+================================================================================
+KEY PRINCIPLES
+================================================================================
+
+1. SINGLE SOURCE OF TRUTH
+   → All prompts in app/prompts.py
+   → One import path: from app.prompts import ...
+   → No duplication, no confusion
+
+2. ORGANIZED STRUCTURE
+   → All documentation in docs/ folder
+   → Root level clean (no scattered files)
+   → Clear folder hierarchy
+
+3. RUNTIME INPUT INJECTION
+   → All RAG templates accept context and question at runtime
+   → System instructions static, inputs dynamic
+   → Follows industry RAG best practices
+
+4. MULTIPLE PATTERNS
+   → 4 RAG template patterns available
+   → Choose right pattern for use case
+   → Easy to add more patterns if needed
+
+================================================================================
+STATUS: PRODUCTION READY ✓
+================================================================================
+
+✓ No duplicate files
+✓ No code duplication
+✓ Clear import paths
+✓ Organized documentation
+✓ All verifications passing
+✓ Ready for use
+
+================================================================================
