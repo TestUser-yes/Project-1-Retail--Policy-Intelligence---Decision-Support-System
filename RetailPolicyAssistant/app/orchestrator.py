@@ -46,14 +46,15 @@ class Orchestrator:
 
             # Generate response based on intent
             agent_confidence = 0.7  # Default fallback
+            agent_sources = []
             if intent == "sql":
-                result, agent_confidence = self._handle_sql_query(query)
+                result, agent_confidence, agent_sources = self._handle_sql_query(query)
                 route = "sql"
             elif intent == "rag":
-                result, agent_confidence = self._handle_rag_query(query)
+                result, agent_confidence, agent_sources = self._handle_rag_query(query)
                 route = "rag"
             else:
-                result, agent_confidence = self._handle_hybrid_query(query)
+                result, agent_confidence, agent_sources = self._handle_hybrid_query(query)
                 route = "hybrid"
 
             self.logger.log("execution", {"result": result})
@@ -127,6 +128,15 @@ class Orchestrator:
                 # Minimum floor: any response with valid result gets at least 0.50
                 base_confidence = max(0.50, agent_confidence)
 
+            # Format sources for response
+            formatted_sources = []
+            if isinstance(agent_sources, list):
+                for source in agent_sources:
+                    if isinstance(source, dict):
+                        formatted_sources.append(source)
+                    elif isinstance(source, str):
+                        formatted_sources.append({"document": source})
+
             # Build response with SLO metrics
             return {
                 "query": query,
@@ -155,7 +165,7 @@ class Orchestrator:
                 },
                 "slo_summary": slo_summary,
                 "confidence_score": round(base_confidence, 2),
-                "sources": ["Policy Database", "Vendor Records"],
+                "sources": formatted_sources if formatted_sources else ["Policy Database"],
                 "sql_validation": "Valid SQL generated",
                 "recommendation": "Review with compliance officer before implementation",
             }
@@ -266,33 +276,35 @@ class Orchestrator:
         return "hybrid"
 
     def _handle_rag_query(self, query: str) -> tuple:
-        """Handle RAG query - call real RAG agent. Returns (result_text, confidence)"""
+        """Handle RAG query - call real RAG agent. Returns (result_text, confidence, sources)"""
         from app.agents.rag_agent import RAGAgent
         try:
             rag_agent = RAGAgent()
             result_dict = rag_agent.run(query)
             result_text = result_dict.get("result", "No policy documents found.")
             confidence = result_dict.get("confidence", 0.5)
-            return result_text, confidence
+            sources = result_dict.get("sources", [])
+            return result_text, confidence, sources
         except Exception as e:
             self.logger.log("error", {"error": f"RAG query failed: {str(e)}"})
-            return f"Error retrieving policy: {str(e)}", 0.3
+            return f"Error retrieving policy: {str(e)}", 0.3, []
 
     def _handle_sql_query(self, query: str) -> tuple:
-        """Handle SQL query - call real SQL agent. Returns (result_text, confidence)"""
+        """Handle SQL query - call real SQL agent. Returns (result_text, confidence, sources)"""
         from app.agents.sql_agent import SQLAgent
         try:
             sql_agent = SQLAgent()
             result_dict = sql_agent.run(query)
             result_text = result_dict.get("result", "No database results found.")
             confidence = result_dict.get("confidence", 0.5)
-            return result_text, confidence
+            sources = result_dict.get("sources", [])
+            return result_text, confidence, sources
         except Exception as e:
             self.logger.log("error", {"error": f"SQL query failed: {str(e)}"})
-            return f"Error querying database: {str(e)}", 0.3
+            return f"Error querying database: {str(e)}", 0.3, []
 
     def _handle_hybrid_query(self, query: str) -> tuple:
-        """Handle hybrid query - combine RAG and SQL. Returns (result_text, confidence)"""
+        """Handle hybrid query - combine RAG and SQL. Returns (result_text, confidence, sources)"""
         from app.agents.rag_agent import RAGAgent
         from app.agents.sql_agent import SQLAgent
         try:
@@ -303,11 +315,16 @@ class Orchestrator:
 
             rag_text = rag_result.get("result", "")
             sql_text = sql_result.get("result", "")
+            rag_sources = rag_result.get("sources", [])
+            sql_sources = sql_result.get("sources", [])
 
             # Use average of both confidence scores
             avg_confidence = (rag_result.get("confidence", 0.5) + sql_result.get("confidence", 0.5)) / 2
 
-            return f"Policy Analysis:\n{rag_text}\n\nDatabase Validation:\n{sql_text}", avg_confidence
+            # Combine sources from both
+            combined_sources = rag_sources + sql_sources
+
+            return f"Policy Analysis:\n{rag_text}\n\nDatabase Validation:\n{sql_text}", avg_confidence, combined_sources
         except Exception as e:
             self.logger.log("error", {"error": f"Hybrid query failed: {str(e)}"})
-            return f"Error in hybrid analysis: {str(e)}", 0.2
+            return f"Error in hybrid analysis: {str(e)}", 0.2, []

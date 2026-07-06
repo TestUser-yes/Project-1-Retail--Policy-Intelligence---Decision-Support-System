@@ -17,20 +17,40 @@ class RAGAgent:
             print(f"Query: {query}")
             print("=" * 60)
 
-            result = answer_rag(query)
+            # Try to get answer from PDFs
+            from app.rag.retriever import retrieve_policy_chunks
 
-            if result and "not found" not in result.lower() and "error" not in result.lower():
-                confidence = 0.90
-                sources = ["PDF Documents"]
+            chunks = retrieve_policy_chunks(query, top_k=6)
+
+            if chunks:
+                # Got documents - use them to generate answer
+                print(f"Found {len(chunks)} relevant document chunks")
+                result_dict = answer_rag(query)
+                result = result_dict.get("answer", result_dict.get("result", "No answer generated"))
+                sources = result_dict.get("sources", [])
+
+                # High confidence when we have actual PDF sources
+                confidence = 0.92
+
+                print(f"Generated answer from {len(chunks)} document chunks")
+
+                return {
+                    "result": result,
+                    "sources": sources,
+                    "confidence": confidence,
+                    "from_pdfs": True,
+                }
             else:
-                confidence = 0.0
-                sources = []
+                # No documents found - use fallback
+                print("No relevant documents found, using fallback policy")
+                fallback_result = self._generate_fallback_policy(query)
+                return {
+                    "result": fallback_result,
+                    "sources": ["Policy Database (Fallback)"],
+                    "confidence": 0.75,
+                    "from_pdfs": False,
+                }
 
-            return {
-                "result": result,
-                "sources": sources,
-                "confidence": confidence,
-            }
         except Exception as e:
             error_msg = str(e)
 
@@ -43,6 +63,7 @@ class RAGAgent:
                 "result": fallback_result,
                 "sources": ["Policy Database (Fallback)"],
                 "confidence": 0.75,
+                "from_pdfs": False,
             }
 
     def _generate_fallback_policy(self, query: str) -> str:

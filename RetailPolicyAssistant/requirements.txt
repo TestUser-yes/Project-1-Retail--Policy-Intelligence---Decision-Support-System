@@ -17,6 +17,7 @@ langchain
 langchain-community
 langgraph
 pypdf
+uuid-utils
 
 python-dotenv
 python-jose[cryptography]
