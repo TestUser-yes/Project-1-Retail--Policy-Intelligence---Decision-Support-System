@@ -56,7 +56,15 @@ INSTRUCTIONS:
         response = llm.generate_json([
             {
                 "role": "system",
-                "content": "You are a policy compliance expert. Answer questions based on provided policy documents. Provide accurate, well-cited responses."
+                "content": """You are a policy compliance expert. Answer questions based on provided policy documents.
+
+IMPORTANT RULES:
+1. Answer ONLY the specific question asked - be concise
+2. Do NOT return entire documents or all available information
+3. Extract only the relevant sections needed to answer the query
+4. Keep answers to 2-3 sentences maximum unless more detail is necessary
+5. Always cite the source document and page number
+6. Focus on being helpful, not comprehensive"""
             },
             {
                 "role": "user",
@@ -67,11 +75,13 @@ INSTRUCTIONS:
         # Extract answer - try multiple field names
         answer = response.get("answer", response.get("response", response.get("result", str(response))))
     except Exception as e:
-        # Fallback: compile answer from chunks directly
-        answer = f"Policy Response:\n\n" + "\n\n".join([
-            f"{chunk.document_name} (Page {chunk.page_number}):\n{chunk.content[:300]}..."
-            for chunk in chunks[:3]
-        ])
+        # Fallback: compile a concise answer from chunks
+        relevant_content = []
+        for chunk in chunks[:2]:  # Only use top 2 chunks
+            content = chunk.content.split('\n')[0:5]  # Only first 5 lines
+            relevant_content.append(f"{chunk.document_name} (Page {chunk.page_number}): {' '.join(content)}")
+
+        answer = "Answer from policy documents:\n\n" + "\n\n".join(relevant_content)
 
     return {
         "result": answer,

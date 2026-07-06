@@ -267,12 +267,29 @@ class Orchestrator:
         return False, "Routine query - no escalation needed"
 
     def _detect_intent(self, query: str) -> str:
-        """Detect query intent from keywords."""
+        """Detect query intent from keywords and patterns."""
         query_lower = query.lower()
+
+        # Check for explicit SQL indicators (count, list, show, how many, etc.)
+        sql_indicators = [
+            "how many", "count", "list", "show", "vendors", "records", "entries",
+            "critical findings", "approval status", "audit log", "database",
+            "compliance status"
+        ]
+        if any(indicator in query_lower for indicator in sql_indicators):
+            return "sql"
+
+        # Check for vendor/supplier keywords (SQL)
         if any(w in query_lower for w in self.vendor_keywords):
             return "sql"
-        elif any(w in query_lower for w in self.policy_keywords):
+
+        # Check for policy keywords but make sure it's NOT a count/list query
+        if any(w in query_lower for w in self.policy_keywords):
+            # If it's a count/list query with policy keyword, treat as SQL
+            if any(ind in query_lower for ind in ["how many", "count", "list", "number"]):
+                return "sql"
             return "rag"
+
         return "hybrid"
 
     def _handle_rag_query(self, query: str) -> tuple:
