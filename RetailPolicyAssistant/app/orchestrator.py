@@ -3,6 +3,7 @@
 import uuid
 from app.observability.logger import AgentLogger
 from app.observability.metrics import Metrics
+from app.observability.langfuse_tracer import trace_function
 from app.repositories.ai_repo import AIRepository
 from app.core.cost_tracking import get_cost_tracker
 from app.core.slo_tracker import get_slo_tracker
@@ -28,6 +29,7 @@ class Orchestrator:
         self.cost_config = self.config.cost
         self.routing_config = self.config.routing
 
+    @trace_function("ask_query", as_type="chain")
     def run(self, query: str):
         """Process query and return demo response."""
         query_id = str(uuid.uuid4())[:8]
@@ -116,17 +118,15 @@ class Orchestrator:
             cost_summary = self.cost_tracker.get_summary()
             slo_summary = self.slo_tracker.get_summary()
 
-            # Use agent's confidence score with minimum floor
-            # Ensure confidence never drops below 0.50 for valid responses
-            if agent_confidence >= 0.85:
-                base_confidence = 0.90
-            elif agent_confidence >= 0.70:
-                base_confidence = 0.80
-            elif agent_confidence >= 0.50:
-                base_confidence = 0.65
+            # Use agent's confidence score directly (from RAG/SQL agents)
+            # These are well-calibrated: 0.92 for PDF-backed, 0.75+ for database, etc.
+            # Only apply minimum floor for truly empty/error responses
+            if agent_confidence > 0.0:
+                # Trust the agent's confidence score
+                base_confidence = agent_confidence
             else:
-                # Minimum floor: any response with valid result gets at least 0.50
-                base_confidence = max(0.50, agent_confidence)
+                # Fallback only if agent returned 0.0 (error case)
+                base_confidence = 0.5
 
             # Format sources for response
             formatted_sources = []
@@ -270,27 +270,55 @@ class Orchestrator:
         """Detect query intent from keywords and patterns."""
         query_lower = query.lower()
 
-        # Check for explicit SQL indicators (count, list, show, how many, etc.)
-        sql_indicators = [
-            "how many", "count", "list", "show", "vendors", "records", "entries",
-            "critical findings", "approval status", "audit log", "database",
-            "compliance status"
-        ]
-        if any(indicator in query_lower for indicator in sql_indicators):
-            return "sql"
+        # Define keyword sets
+        sql_indicators = ["how many", "count", "list", "records", "entries", "critical findings", "approval status", "audit log", "database"]
+        compliance_keywords = ["ccpa", "gdpr", "gdpr compliance", "compliant", "compliance", "regulatory", "regulation", "requirement", "standard", "data protection", "privacy", "encryption", "encryption standards", "access control", "incident response", "retention", "retention policy", "breach", "notification", "pii", "personally identifiable"]
 
-        # Check for vendor/supplier keywords (SQL)
-        if any(w in query_lower for w in self.vendor_keywords):
-            return "sql"
+        # Detect keyword presence
+        has_vendor = any(w in query_lower for w in self.vendor_keywords)
+        has_policy = any(w in query_lower for w in self.policy_keywords)
+        has_compliance = any(kw in query_lower for kw in compliance_keywords)
+        has_sql_indicator = any(ind in query_lower for ind in sql_indicators)
+        has_show = "show" in query_lower
 
-        # Check for policy keywords but make sure it's NOT a count/list query
-        if any(w in query_lower for w in self.policy_keywords):
-            # If it's a count/list query with policy keyword, treat as SQL
-            if any(ind in query_lower for ind in ["how many", "count", "list", "number"]):
+        # Priority 1: SQL indicators (unless combined with vendor+compliance → hybrid)
+        if has_sql_indicator:
+            # "how many vendors" type queries → SQL
+            # But "show vendors with compliance issues" → hybrid
+            if not (has_vendor and has_compliance):
                 return "sql"
+
+        # Priority 2: "show" keyword handling
+        if has_show:
+            # "show vendors X" → SQL
+            # "show vendors with compliance issues" → hybrid
+            if has_vendor and not has_compliance:
+                return "sql"
+            if has_vendor and has_compliance:
+                return "hybrid"
+
+        # Priority 3: Compliance + Vendor → HYBRID
+        if has_compliance and has_vendor:
+            return "hybrid"
+
+        # Priority 4: Compliance only → RAG
+        if has_compliance:
             return "rag"
 
-        return "hybrid"
+        # Priority 5: Vendor + Policy → HYBRID
+        if has_vendor and has_policy:
+            return "hybrid"
+
+        # Priority 6: Vendor only → SQL
+        if has_vendor:
+            return "sql"
+
+        # Priority 7: Policy only → RAG
+        if has_policy:
+            return "rag"
+
+        # Default: RAG (safer than hybrid)
+        return "rag"
 
     def _handle_rag_query(self, query: str) -> tuple:
         """Handle RAG query - call real RAG agent. Returns (result_text, confidence, sources)"""

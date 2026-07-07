@@ -6,6 +6,8 @@ using Pydantic Settings.
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
+from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -39,11 +41,11 @@ class Settings(BaseSettings):
     # -------------------------
     LANGFUSE_PUBLIC_KEY: str = ""
     LANGFUSE_SECRET_KEY: str = ""
-    LANGFUSE_HOST: str = "https://cloud.langfuse.com"
+    LANGFUSE_BASE_URL: str = "https://cloud.langfuse.com"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        case_sensitive=True,
+        env_file=str(Path(__file__).parent.parent.parent / ".env"),
+        case_sensitive=False,
     )
 
 

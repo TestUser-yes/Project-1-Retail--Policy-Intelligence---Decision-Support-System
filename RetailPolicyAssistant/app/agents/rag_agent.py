@@ -1,9 +1,11 @@
 from app.rag import answer_rag
+from app.observability.langfuse_tracer import trace_function
 
 
 class RAGAgent:
     """RAG agent that retrieves policies from PDF documents."""
 
+    @trace_function("rag_pipeline", as_type="chain")
     def run(self, query: str) -> dict:
         """Run RAG query and return structured result from PDF documents.
 

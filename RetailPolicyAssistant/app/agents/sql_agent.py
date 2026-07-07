@@ -1,6 +1,7 @@
 """SQL Agent - Text2SQL query execution."""
 
 from app.sql import answer_sql
+from app.observability.langfuse_tracer import trace_function
 
 
 class SQLAgent:
@@ -9,6 +10,7 @@ class SQLAgent:
     def __init__(self):
         self.name = "sql_agent"
 
+    @trace_function("sql_query", as_type="chain")
     def run(self, query: str) -> dict:
         """Execute SQL query synchronously."""
         try:

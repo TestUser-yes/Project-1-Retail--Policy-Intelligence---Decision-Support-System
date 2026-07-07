@@ -113,19 +113,19 @@ export default function ResponseFormatter({ result, onEscalate }: ResponseFormat
           </div>
           <div className="flex items-baseline gap-2">
             <p className={`text-3xl font-bold ${confidenceColor}`}>
-              {((result.confidence_score as any) ?? 0).toFixed(0)}%
+              {(((result.confidence_score as any) ?? 0) * 100).toFixed(0)}%
             </p>
           </div>
           <div className="mt-3 w-full h-2 bg-gray-200 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
-                ((result.confidence_score as any) ?? 0) >= 90
+                ((result.confidence_score as any) ?? 0) * 100 >= 90
                   ? 'bg-green-500'
-                  : ((result.confidence_score as any) ?? 0) >= 70
+                  : ((result.confidence_score as any) ?? 0) * 100 >= 70
                   ? 'bg-yellow-500'
                   : 'bg-red-500'
               }`}
-              style={{ width: `${(result.confidence_score as any) ?? 0}%` }}
+              style={{ width: `${((result.confidence_score as any) ?? 0) * 100}%` }}
             />
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function ResponseFormatter({ result, onEscalate }: ResponseFormat
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 text-sm">
-                          {typeof source === 'string' ? source : source.source || source.policy || 'Unknown Source'}
+                          {typeof source === 'string' ? source : source.document || source.source || source.policy || 'Unknown Source'}
                         </p>
                         {typeof source === 'object' && source.section && (
                           <p className="text-xs text-gray-600 mt-1">
@@ -336,7 +336,7 @@ export default function ResponseFormatter({ result, onEscalate }: ResponseFormat
                   <li>Intent classification: {result.intent?.intent || 'Analysis'}</li>
                   <li>Retrieval mode: {result.route?.toUpperCase() || 'HYBRID'}</li>
                   <li>Risk assessment: {result.risk?.risk_level || 'MEDIUM'}</li>
-                  <li>Confidence scoring: {(result.confidence_score ?? 0).toFixed(1)}%</li>
+                  <li>Confidence scoring: {((result.confidence_score ?? 0) * 100).toFixed(1)}%</li>
                   <li>Escalation evaluation: {result.escalate ? 'Required' : 'Not required'}</li>
                 </ol>
               </div>

@@ -43,34 +43,17 @@ async def tracing_middleware(request: Request, call_next):
     start_time = time.time()
     tracer = get_tracer()
 
-    # Extract user info from header if available
-    auth_header = request.headers.get("Authorization", "")
-    user_id = auth_header.split()[-1][:20] if auth_header else "anonymous"
-
-    # Create trace for request
-    trace = tracer.create_trace(
-        name=f"http-{request.method}-{request.url.path}",
-        user_id=user_id,
-        metadata={
-            "method": request.method,
-            "path": request.url.path,
-            "client": request.client.host if request.client else "unknown",
-        }
-    )
-
+    # Note: Tracing is now handled via @observe decorators on functions
+    # Middleware just measures timing, actual tracing happens in orchestrator
     response = await call_next(request)
     latency_ms = (time.time() - start_time) * 1000
 
-    # Log response details
-    tracer.create_span(
-        trace,
-        "http-response",
-        input_data={"method": request.method, "path": request.url.path},
-        output_data={"status_code": response.status_code, "latency_ms": latency_ms},
-    )
+    # Add latency header for observability
+    response.headers["X-Latency-MS"] = str(int(latency_ms))
 
-    response.headers["X-Trace-ID"] = str(trace)
-    tracer.flush()
+    # Flush any pending traces (best effort)
+    if tracer.is_enabled():
+        tracer.flush()
 
     return response
 

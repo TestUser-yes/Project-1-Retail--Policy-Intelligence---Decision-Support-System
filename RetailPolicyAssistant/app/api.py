@@ -121,110 +121,40 @@ def ask(
     conversation_id = request.conversation_id
     start_time = time.time()
 
-    # Initialize Langfuse tracer
-    tracer = get_tracer()
-    trace = tracer.create_trace(
-        name="ask-query",
-        user_id=current_user.user_id,
-        session_id=conversation_id,
-        metadata={
-            "query_length": len(query),
-            "user_role": current_user.role,
-        }
-    )
+    # Note: Langfuse tracing is handled via @observe decorators on:
+    # - orchestrator.run() (asks_query span)
+    # - rag_agent.run() / sql_agent.run() (rag_pipeline / sql_query spans)
+    # This endpoint just processes the response
 
     try:
         # 1. Check permission
         PermissionValidator.assert_permission(current_user, Permission.ASK_POLICY_QUESTION)
-        tracer.create_span(
-            trace,
-            "permission-check",
-            input_data={"user_id": current_user.user_id, "role": current_user.role},
-            output_data={"allowed": True},
-        )
 
         # 2. Validate input
         is_valid, error_msg = validate_query(query)
         if not is_valid:
-            tracer.create_span(
-                trace,
-                "input-validation",
-                input_data={"query": query},
-                output_data={"is_valid": False, "error": error_msg},
-            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Query validation failed: {error_msg}"
             )
 
-        tracer.create_span(
-            trace,
-            "input-validation",
-            input_data={"query": query},
-            output_data={"is_valid": True},
-        )
-
         # 3. Check rate limits
         allowed, rate_info = check_rate_limit(current_user.user_id, "/ask")
         if not allowed:
-            tracer.create_span(
-                trace,
-                "rate-limit-check",
-                input_data={"user_id": current_user.user_id, "endpoint": "/ask"},
-                output_data={
-                    "allowed": False,
-                    "limit": rate_info.get('ask_limit', {}).get('limit', 50),
-                },
-            )
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=f"Rate limit exceeded. Limit: {rate_info['ask_limit']['limit']}/hour"
             )
 
-        tracer.create_span(
-            trace,
-            "rate-limit-check",
-            input_data={"user_id": current_user.user_id, "endpoint": "/ask"},
-            output_data={
-                "allowed": True,
-                "tokens_remaining": rate_info.get('ask_limit', {}).get('tokens_remaining', 0),
-            },
-        )
-
         # 4. Get or create conversation
         conversation = get_or_create_conversation(conversation_id, current_user.user_id)
         conversation.add_message("user", query, metadata={"user_id": current_user.user_id})
 
-        # 5. Process query
+        # 5. Process query (traces handled by @observe decorator on orchestrator.run)
         orchestrator = Orchestrator(db=db)
         response = orchestrator.run(query)
 
         latency_seconds = time.time() - start_time
-
-        # Log orchestrator response details
-        tracer.create_span(
-            trace,
-            "query-orchestration",
-            input_data={"query": query},
-            output_data={
-                "intent": response["intent"]["intent"],
-                "route": response["route"],
-                "risk_level": response["risk"]["risk_level"],
-                "escalate": response["escalate"],
-            },
-        )
-
-        # Log cost information
-        tracer.log_cost(
-            trace,
-            cost_usd=response.get("cost_usd", 0.0),
-            budget_remaining=response.get("budget_remaining_usd", 0.0),
-            budget_used_percent=response.get("budget_percent_used", 0.0),
-            tokens={
-                "query_length": len(query),
-                "response_length": len(response["result"]["result"]),
-            },
-        )
 
         # 6. Add response to conversation memory
         conversation.add_message(

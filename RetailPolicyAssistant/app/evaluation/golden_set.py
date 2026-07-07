@@ -81,7 +81,9 @@ GOLDEN_SET = [
             "route": "rag",
             "risk": "low",
             "escalate": False,
-            "answer_contains": ["CCPA", "compliant"],
+            "answer_contains": ["CCPA", "compliance", "data", "protection"],
+            "min_confidence": 0.90,
+            "from_pdfs": True,
         },
     },
     {

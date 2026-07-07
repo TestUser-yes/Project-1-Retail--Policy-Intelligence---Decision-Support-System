@@ -6,7 +6,8 @@ Includes logging, tracing, metrics, and Langfuse integration.
 from app.observability.langfuse_tracer import (
     LangfuseTracer,
     get_tracer,
-    trace_query,
+    trace_function,
+    observe,
 )
 from app.observability.langfuse_dashboard import (
     LangfuseDashboard,
@@ -16,7 +17,8 @@ from app.observability.langfuse_dashboard import (
 __all__ = [
     "LangfuseTracer",
     "get_tracer",
-    "trace_query",
+    "trace_function",
+    "observe",
     "LangfuseDashboard",
     "get_dashboard",
 ]
