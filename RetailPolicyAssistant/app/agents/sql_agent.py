@@ -1,6 +1,6 @@
 """SQL Agent - Text2SQL query execution."""
 
-from app.sql import answer_sql
+from app.sql import answer_sql  # Imported from app/sql/__init__.py (file deleted, now using folder)
 from app.observability.langfuse_tracer import trace_function
 
 

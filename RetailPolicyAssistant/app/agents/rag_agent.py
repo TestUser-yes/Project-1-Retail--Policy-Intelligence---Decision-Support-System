@@ -1,4 +1,4 @@
-from app.rag import answer_rag
+from app.rag import answer_rag  # Imported from app/rag/__init__.py (file deleted, now using folder)
 from app.observability.langfuse_tracer import trace_function
 
 

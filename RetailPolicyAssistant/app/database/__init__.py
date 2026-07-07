@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from .base import Base
+from app.models.base import Base
 from .session import SessionLocal, engine, get_db
 
 

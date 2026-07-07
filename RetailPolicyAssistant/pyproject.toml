@@ -1,0 +1,28 @@
+[project]
+name = "retailpolicyassistant"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pyyaml",
+    "sqlalchemy",
+    "alembic",
+    "psycopg[binary]",
+    "pgvector",
+    "pydantic",
+    "pydantic-settings",
+    "openai",
+    "langchain",
+    "langchain-community",
+    "langgraph",
+    "pypdf",
+    "uuid-utils",
+    "python-dotenv",
+    "python-jose[cryptography]",
+    "pytest",
+    "httpx",
+    "langfuse",
+]
