@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-import uuid
 import time
 
 from app.database.session import get_db
@@ -23,7 +22,7 @@ router = APIRouter()
 # -----------------------------
 class AskRequest(BaseModel):
     query: str = Field(..., min_length=3, max_length=10000)
-    conversation_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    conversation_id: str = Field(default="", description="Optional conversation ID (auto-generated if empty)")
 
 
 class IntentModel(BaseModel):
