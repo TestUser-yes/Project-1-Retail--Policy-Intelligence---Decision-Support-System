@@ -7,8 +7,7 @@ For future: Claude/OpenAI integration ready.
 """
 
 import time
-import uuid
-from typing import Dict, List
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -16,9 +15,9 @@ from datetime import datetime, timezone
 @dataclass
 class QueryCost:
     """Track cost for a single query."""
-    query_id: str
-    timestamp: datetime
     query_text: str
+    timestamp: datetime
+    query_id: Optional[str] = None
     embedding_tokens: int = 0
     completion_tokens: int = 0
     embedding_cost: float = 0.0
@@ -66,20 +65,26 @@ class CostTracker:
     def record_query(
         self,
         query_text: str,
-        query_id: str = None,
+        query_id: Optional[str] = None,
         embedding_tokens: int = 0,
         completion_tokens: int = 0,
         embedding_cost: float = 0.0,
         completion_cost: float = 0.0,
     ):
-        """Record a query execution and its cost."""
-        if query_id is None:
-            query_id = str(uuid.uuid4())
+        """Record a query execution and its cost.
 
+        Args:
+            query_text: The query text
+            query_id: Optional database query ID (will be assigned after DB save)
+            embedding_tokens: Tokens used for embeddings
+            completion_tokens: Tokens used for completion
+            embedding_cost: Cost of embeddings
+            completion_cost: Cost of completion
+        """
         query_cost = QueryCost(
+            query_text=query_text,
             query_id=query_id,
             timestamp=datetime.now(timezone.utc),
-            query_text=query_text,
             embedding_tokens=embedding_tokens,
             completion_tokens=completion_tokens,
             embedding_cost=embedding_cost,
@@ -215,11 +220,18 @@ def get_cost_tracker() -> CostTracker:
 
 def record_query_cost(
     query_text: str,
-    query_id: str = None,
+    query_id: Optional[str] = None,
     embedding_tokens: int = 0,
     completion_tokens: int = 0,
 ):
-    """Record query cost globally."""
+    """Record query cost globally.
+
+    Args:
+        query_text: The query text
+        query_id: Optional database query ID (assigned after DB save)
+        embedding_tokens: Tokens used for embeddings
+        completion_tokens: Tokens used for completion
+    """
     tracker = get_cost_tracker()
 
     # Estimate costs (currently 0 for Ollama)
