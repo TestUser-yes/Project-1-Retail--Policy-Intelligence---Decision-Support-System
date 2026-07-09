@@ -211,16 +211,14 @@ def ask(
     except HTTPException:
         raise
     except Exception as e:
-        tracer.create_span(
-            trace,
-            "error",
-            output_data={"error": str(e)[:200]},
-        )
+        tracer = get_tracer()
+        tracer.log_error("ask_query", str(e)[:200])
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Query processing failed: {str(e)[:100]}"
         )
     finally:
+        tracer = get_tracer()
         tracer.flush()
 
 

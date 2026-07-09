@@ -7,6 +7,7 @@ For future: Claude/OpenAI integration ready.
 """
 
 import time
+import uuid
 from typing import Dict, List
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -64,14 +65,17 @@ class CostTracker:
 
     def record_query(
         self,
-        query_id: str,
         query_text: str,
+        query_id: str = None,
         embedding_tokens: int = 0,
         completion_tokens: int = 0,
         embedding_cost: float = 0.0,
         completion_cost: float = 0.0,
     ):
         """Record a query execution and its cost."""
+        if query_id is None:
+            query_id = str(uuid.uuid4())
+
         query_cost = QueryCost(
             query_id=query_id,
             timestamp=datetime.now(timezone.utc),
@@ -210,8 +214,8 @@ def get_cost_tracker() -> CostTracker:
 
 
 def record_query_cost(
-    query_id: str,
     query_text: str,
+    query_id: str = None,
     embedding_tokens: int = 0,
     completion_tokens: int = 0,
 ):
@@ -223,8 +227,8 @@ def record_query_cost(
     completion_cost = tracker.estimate_cost(0, completion_tokens)
 
     return tracker.record_query(
-        query_id=query_id,
         query_text=query_text,
+        query_id=query_id,
         embedding_tokens=embedding_tokens,
         completion_tokens=completion_tokens,
         embedding_cost=embedding_cost,
