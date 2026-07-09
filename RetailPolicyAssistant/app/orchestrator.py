@@ -100,6 +100,7 @@ class Orchestrator:
             completion_cost = (completion_tokens / 1000.0) * self.cost_config.completion_cost_per_1k
             self.cost_tracker.record_query(
                 query_text=query,
+                query_id=None,
                 embedding_tokens=embedding_tokens,
                 completion_tokens=completion_tokens,
                 embedding_cost=embedding_cost,
