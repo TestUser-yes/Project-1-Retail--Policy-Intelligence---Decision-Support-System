@@ -16,6 +16,16 @@ SLO_TARGETS = {
     "escalation_accuracy": 1.00,  # 100% escalation detection
 }
 
+# ==================== SLO ENFORCEMENT CONFIGURATION ====================
+SLO_ENFORCEMENT = {
+    "enforce_latency": True,  # Enforce latency SLO boundaries
+    "enforce_confidence": True,  # Enforce confidence score minimum
+    "enforce_accuracy": True,  # Enforce accuracy SLO
+    "latency_target_ms": 2000,  # Target latency (ms)
+    "latency_hard_limit_ms": 2400,  # Hard limit for rejection (ms)
+    "confidence_min": 0.70,  # Minimum confidence (70%)
+}
+
 # ==================== BUDGET CONFIGURATION ====================
 BUDGET_CONFIG = {
     "daily_limit_usd": 100.0,  # $100/day limit

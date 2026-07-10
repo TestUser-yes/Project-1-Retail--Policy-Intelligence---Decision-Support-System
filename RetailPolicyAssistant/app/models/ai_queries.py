@@ -16,4 +16,7 @@ class AIQuery(Base):
     confidence_score = Column(Float, default=0.0)
     latency = Column(Float)
     cost_usd = Column(Float, default=0.0)
+    slo_breached = Column(Boolean, default=False)
+    enforcement_action = Column(String, default="none")
+    enforcement_reason = Column(String, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())

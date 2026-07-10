@@ -44,6 +44,8 @@ class SLOTracker:
         self.metrics_history: list[SLOMetrics] = []
         self.query_count = 0
         self.escalation_count = 0
+        self.slo_breach_count = 0
+        self.breach_details: list[dict] = []
 
     def record_latency(self, latency_seconds: float) -> SLOMetrics:
         """Record query latency and check SLO compliance.
@@ -102,13 +104,35 @@ class SLOTracker:
         passed = sum(1 for m in self.metrics_history if m.slo_status == "pass")
         return round((passed / len(self.metrics_history)) * 100, 2)
 
+    def record_slo_breach(self, breach_type: str, details: dict) -> None:
+        """Record an SLO breach event.
+
+        Args:
+            breach_type: Type of breach (latency, confidence, accuracy)
+            details: Breach details (reason, severity, actual, target)
+        """
+        self.slo_breach_count += 1
+        self.breach_details.append({
+            "type": breach_type,
+            "details": details,
+            "timestamp": time.time(),
+        })
+
+    def get_slo_breach_rate(self) -> float:
+        """Get percentage of queries with SLO breaches."""
+        if self.query_count == 0:
+            return 0.0
+        return round((self.slo_breach_count / self.query_count) * 100, 2)
+
     def get_summary(self) -> Dict:
         """Get SLO compliance summary."""
         compliance_rate = self.get_slo_compliance_rate()
         return {
             "total_queries": self.query_count,
             "total_escalations": self.escalation_count,
+            "total_slo_breaches": self.slo_breach_count,
             "escalation_rate_percent": self.get_escalation_rate(),
+            "slo_breach_rate_percent": self.get_slo_breach_rate(),
             "average_latency_ms": self.get_average_latency(),
             "slo_compliance_rate_percent": compliance_rate,
             "success_rate": compliance_rate / 100.0,  # As decimal (0.0-1.0)

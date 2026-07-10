@@ -12,6 +12,8 @@ from app.core.memory import get_or_create_conversation
 from app.core.permissions import PermissionValidator, Permission, require_permission
 from app.observability.langfuse_tracer import get_tracer
 from app.models import AIQuery
+from app.core.slo_enforcer import get_slo_enforcer
+from app.core.slo_tracker import get_slo_tracker
 
 
 router = APIRouter()
@@ -43,6 +45,9 @@ class SLOMetricsModel(BaseModel):
     latency_ms: float
     target_latency_ms: float
     slo_status: str  # pass, warning, fail
+    slo_breached: bool = False
+    enforcement_action: str = "none"
+    enforcement_reason: str = ""
 
 
 # Conversation Response
@@ -155,6 +160,29 @@ def ask(
 
         latency_seconds = time.time() - start_time
 
+        # 5b. Apply SLO enforcement
+        slo_enforcer = get_slo_enforcer()
+        enforcement = slo_enforcer.enforce(response, latency_seconds)
+
+        # Record SLO breach if occurred
+        slo_tracker = get_slo_tracker()
+        if enforcement["breached"]:
+            slo_tracker.record_slo_breach(
+                enforcement["enforcement_action"],
+                {
+                    "latency_ms": latency_seconds * 1000,
+                    "confidence": response.get("confidence_score", 0.0),
+                    "reason": enforcement["enforcement_reason"],
+                }
+            )
+
+        # If SLO enforcement blocks response, raise exception
+        if not enforcement["allow"]:
+            raise HTTPException(
+                status_code=enforcement["http_status"],
+                detail=enforcement["enforcement_reason"]
+            )
+
         # 6. Add response to conversation memory
         conversation.add_message(
             "assistant",
@@ -180,6 +208,9 @@ def ask(
             confidence_score=response.get("confidence_score", 0.0),
             latency=latency_seconds * 1000,
             cost_usd=response.get("cost_usd", 0.0),
+            slo_breached=enforcement["breached"],
+            enforcement_action=enforcement["enforcement_action"],
+            enforcement_reason=enforcement["enforcement_reason"],
         )
         db.add(ai_query)
         db.commit()
@@ -190,6 +221,9 @@ def ask(
             "target_latency_ms": 2000.0,
             "slo_status": "unknown",
         })
+        slo_metrics_data["slo_breached"] = enforcement["breached"]
+        slo_metrics_data["enforcement_action"] = enforcement["enforcement_action"]
+        slo_metrics_data["enforcement_reason"] = enforcement["enforcement_reason"]
 
         return AskResponse(
             query=response["query"],
