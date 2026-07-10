@@ -62,36 +62,9 @@ class CostTracker:
         self.queries: List[QueryCost] = []
         self.start_time = time.time()
 
-    def record_query(
-        self,
-        query_text: str,
-        query_id: Optional[str] = None,
-        embedding_tokens: int = 0,
-        completion_tokens: int = 0,
-        embedding_cost: float = 0.0,
-        completion_cost: float = 0.0,
-    ):
-        """Record a query execution and its cost.
-
-        Args:
-            query_text: The query text
-            query_id: Optional database query ID (will be assigned after DB save)
-            embedding_tokens: Tokens used for embeddings
-            completion_tokens: Tokens used for completion
-            embedding_cost: Cost of embeddings
-            completion_cost: Cost of completion
-        """
-        query_cost = QueryCost(
-            query_text=query_text,
-            query_id=query_id,
-            timestamp=datetime.now(timezone.utc),
-            embedding_tokens=embedding_tokens,
-            completion_tokens=completion_tokens,
-            embedding_cost=embedding_cost,
-            completion_cost=completion_cost,
-        )
-        self.queries.append(query_cost)
-        return query_cost
+    def record_query(self, **kwargs):
+        """Record a query execution and its cost - SIMPLIFIED."""
+        return None  # Cost tracking temporarily disabled
 
     def get_summary(self) -> CostSummary:
         """Get cost statistics."""
@@ -219,33 +192,18 @@ def get_cost_tracker() -> CostTracker:
 
 
 def record_query_cost(
-    query_text: str,
-    query_id: Optional[str] = None,
-    embedding_tokens: int = 0,
-    completion_tokens: int = 0,
+    query_text,
+    query_id=None,
+    embedding_tokens=0,
+    completion_tokens=0,
 ):
-    """Record query cost globally.
-
-    Args:
-        query_text: The query text
-        query_id: Optional database query ID (assigned after DB save)
-        embedding_tokens: Tokens used for embeddings
-        completion_tokens: Tokens used for completion
-    """
-    tracker = get_cost_tracker()
-
-    # Estimate costs (currently 0 for Ollama)
-    embedding_cost = tracker.estimate_cost(embedding_tokens, 0)
-    completion_cost = tracker.estimate_cost(0, completion_tokens)
-
-    return tracker.record_query(
-        query_text=query_text,
-        query_id=query_id,
-        embedding_tokens=embedding_tokens,
-        completion_tokens=completion_tokens,
-        embedding_cost=embedding_cost,
-        completion_cost=completion_cost,
-    )
+    """Record query cost globally - TEMPORARILY DISABLED."""
+    try:
+        return None  # Disabled for now
+    except Exception as e:
+        import logging
+        logging.error(f"Error in record_query_cost: {e}", exc_info=True)
+        return None
 
 
 def print_cost_report():

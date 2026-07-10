@@ -2,7 +2,8 @@
 """Run golden set evaluation against 50 test queries."""
 
 import sys
-sys.path.insert(0, '/c/Users/Anagha.e/project/RetailPolicy_Intelligence_Decision_Support_System/RetailPolicyAssistant')
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.evaluation.golden_evaluator import GoldenSetEvaluator
 

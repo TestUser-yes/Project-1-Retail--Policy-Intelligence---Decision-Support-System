@@ -54,10 +54,13 @@ class RAGAgent:
                 }
 
         except Exception as e:
+            import traceback
             error_msg = str(e)
 
             print(f"\nRAG AGENT: Error retrieving from PDF documents")
             print(f"Error: {error_msg}")
+            print(f"Traceback:")
+            traceback.print_exc()
             print(f"Using fallback policy response...\n")
 
             fallback_result = self._generate_fallback_policy(query)
