@@ -172,10 +172,14 @@ def ask(
         # 6b. Save query to database for dashboard
         ai_query = AIQuery(
             query=query,
+            result=response["result"]["result"],
             intent=response["intent"]["intent"],
             route=response["route"],
             risk_level=response["risk"]["risk_level"],
+            escalated=response["escalate"],
+            confidence_score=response.get("confidence_score", 0.0),
             latency=latency_seconds * 1000,
+            cost_usd=response.get("cost_usd", 0.0),
         )
         db.add(ai_query)
         db.commit()
