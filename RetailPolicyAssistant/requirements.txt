@@ -11,8 +11,6 @@ pgvector
 pydantic
 pydantic-settings
 
-openai
-
 langchain
 langchain-community
 langgraph
