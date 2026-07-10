@@ -1,0 +1,159 @@
+================================================================================
+                    QUICK SETUP - 5 MINUTES
+================================================================================
+
+STEP 1: Install Dependencies
+=============================
+pip install -r requirements.txt
+
+OR use pyproject.toml:
+pip install -e .
+
+
+STEP 2: Create .env File
+=========================
+Create a file named ".env" in the RetailPolicyAssistant directory with:
+
+DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/dbname
+
+Optional (only if you have these services):
+LANGFUSE_PUBLIC_KEY=your_key
+LANGFUSE_SECRET_KEY=your_secret
+OLLAMA_MODEL=phi3:mini
+OLLAMA_BASE_URL=http://localhost:11434
+
+NOTE: You DON'T need OPENAI_API_KEY or OLLAMA installed!
+The project works completely offline with local embeddings.
+
+
+STEP 3: Initialize Database
+=============================
+python app/db_init.py
+
+This creates the necessary tables in PostgreSQL.
+
+
+STEP 4: Start the Server
+=========================
+uvicorn app.main:app --reload --port 8000
+
+Or with custom port:
+uvicorn app.main:app --reload --port 8080
+
+
+STEP 5: Test the API
+=====================
+In another terminal, run:
+
+# Get demo token
+TOKEN=$(curl -s http://localhost:8000/token | jq -r '.access_token')
+
+# Test health check
+curl http://localhost:8000/health
+
+# Test main query endpoint
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"What is the retention policy?"}' \
+  http://localhost:8000/ask
+
+# Upload a PDF
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@Documents/policy.pdf" \
+  http://localhost:8000/api/ingestion/ingest
+
+# Search documents
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"retention","k":3}' \
+  http://localhost:8000/api/ingestion/retrieve
+
+
+DONE!
+======
+Your API is now running at http://localhost:8000
+
+Documentation:
+  - API Docs: http://localhost:8000/docs
+  - ReDoc: http://localhost:8000/redoc
+
+View the documentation files for more information:
+  - SETUP_NO_EXTERNAL_SERVICES.md - Detailed setup guide
+  - ENDPOINTS_SUMMARY.md - All API endpoints
+  - PROJECT_AUDIT_REPORT.md - Complete verification
+
+
+TROUBLESHOOTING
+================
+
+Problem: "ModuleNotFoundError: No module named 'fastapi'"
+Solution: Run: pip install -r requirements.txt
+
+Problem: "Could not connect to PostgreSQL"
+Solution: Check DATABASE_URL in .env file
+         Ensure PostgreSQL is running
+         Update credentials if needed
+
+Problem: "Ollama unavailable"
+Solution: This is OK! System uses local embeddings automatically
+         No Ollama installation needed
+
+Problem: "No module named 'openai'"
+Solution: Already fixed! openai removed from requirements.txt
+         Reinstall: pip install -r requirements.txt
+
+
+DATABASE_URL FORMAT
+====================
+
+PostgreSQL (local):
+postgresql+psycopg://user:password@localhost:5432/dbname
+
+PostgreSQL (cloud/Neon):
+postgresql+psycopg://user:password@host:5432/dbname?sslmode=require
+
+Alternatives:
+postgresql://user:password@localhost/dbname
+postgresql+pg8000://user:password@localhost/dbname
+
+
+FEATURES AVAILABLE
+===================
+✅ Query processing (RAG/SQL/Hybrid)
+✅ Document ingestion (PDF upload)
+✅ Vector search
+✅ Conversation memory
+✅ Risk assessment
+✅ Escalation detection
+✅ Cost tracking
+✅ Observability logging
+
+All work WITHOUT external services (no Ollama, no OpenAI)!
+
+
+ENDPOINTS
+==========
+GET  /health                          - Health check
+GET  /token                           - Get demo token
+POST /ask                             - Main query endpoint
+GET  /conversations/{id}/history      - Conversation history
+GET  /api/dashboard                   - Dashboard metrics
+GET  /api/observability               - Traces and metrics
+POST /api/ingestion/ingest            - Upload PDF
+POST /api/ingestion/retrieve          - Search documents
+
+
+NEXT STEPS
+===========
+1. Read SETUP_NO_EXTERNAL_SERVICES.md for detailed setup
+2. Read ENDPOINTS_SUMMARY.md for API documentation
+3. Start the server and test the endpoints
+4. Check http://localhost:8000/docs for interactive API docs
+
+
+STATUS: 🚀 READY TO GO!
+======================
+Your project is ready to use with 5 simple steps above!
