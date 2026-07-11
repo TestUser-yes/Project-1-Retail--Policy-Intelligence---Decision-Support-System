@@ -1,6 +1,6 @@
 """Observability metrics endpoint - returns SLO and query analytics."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.database.session import get_db
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/observability", tags=["observability"])
 
 
 @router.get("")
-async def get_observability_metrics(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_observability_metrics(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get observability metrics: SLO, latency trends, query analytics."""
     try:
         slo_tracker = get_slo_tracker()

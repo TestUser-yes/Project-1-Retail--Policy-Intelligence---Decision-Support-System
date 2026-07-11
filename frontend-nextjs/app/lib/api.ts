@@ -16,7 +16,7 @@ let isRefreshing = false;
 let refreshPromise: Promise<string> | null = null;
 
 // Initialize tokens on app load - now stored in secure httpOnly cookies
-async function initializeTokens(): Promise<void> {
+export async function initializeTokens(): Promise<void> {
   try {
     const response = await axios.post(
       `${API_URL}/token`,
@@ -173,7 +173,17 @@ export interface DashboardData {
 
 export const api = {
   async getToken() {
-    const response = await apiClient.get('/token');
+    const response = await apiClient.post('/token', {});
+    return response.data;
+  },
+
+  async checkAuthStatus() {
+    const response = await apiClient.get('/auth/status');
+    return response.data;
+  },
+
+  async logout() {
+    const response = await apiClient.post('/logout', {});
     return response.data;
   },
 

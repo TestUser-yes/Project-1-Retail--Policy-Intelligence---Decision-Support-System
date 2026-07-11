@@ -3,8 +3,7 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer
+from fastapi import HTTPException, status
 import hashlib
 from app.config import get_config
 
@@ -14,8 +13,6 @@ SECRET_KEY = _config.auth.secret_key
 ALGORITHM = _config.auth.algorithm
 ACCESS_TOKEN_EXPIRE_MINUTES = _config.auth.access_token_expire_minutes
 REFRESH_TOKEN_EXPIRE_DAYS = getattr(_config.auth, 'refresh_token_expire_days', 7)
-
-security = HTTPBearer()
 
 # In-memory refresh token store (in production, use Redis or database)
 _refresh_token_store: Dict[str, Dict] = {}
@@ -138,9 +135,31 @@ def revoke_refresh_token(refresh_token: str) -> bool:
         return False
 
 
-async def get_current_user(credentials = Depends(security)) -> User:
-    """Get current user from JWT token."""
-    token = credentials.credentials
+async def get_current_user(request) -> User:
+    """Get current user from JWT token - supports both Bearer auth and secure cookies.
+
+    Priority order:
+    1. Authorization: Bearer <token> header (for API clients)
+    2. access_token cookie (for browser/frontend)
+    """
+    token = None
+
+    # Try to get token from Authorization header (Bearer auth)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+
+    # If no header token, try to get from secure cookie
+    if not token:
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     payload = verify_token(token, token_type="access")
 
     user_id = payload.get("user_id")

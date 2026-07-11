@@ -144,26 +144,28 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Retail Policy Intelligence System</h1>
-          <p className="text-gray-600">SLO-Bound Autonomous Agentic AI Decision Support Dashboard</p>
+        <div className="mb-12">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent mb-2">
+            Retail Policy Intelligence
+          </h1>
+          <p className="text-lg text-gray-600">SLO-Bound Autonomous Agentic AI Decision Support Dashboard</p>
         </div>
 
         {/* Quick Actions */}
-        <div className="mb-8 flex flex-wrap gap-3">
+        <div className="mb-10 flex flex-wrap gap-4">
           <Link
             href="/query"
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition inline-flex items-center gap-2"
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 font-semibold transition inline-flex items-center gap-2 shadow-lg hover:shadow-xl"
           >
             <Zap className="w-5 h-5" />
             Ask Question
           </Link>
           <Link
             href="/compliance"
-            className="px-6 py-3 border-2 border-amber-300 text-amber-900 rounded-lg hover:bg-amber-50 font-semibold transition inline-flex items-center gap-2"
+            className="px-6 py-3 border-2 border-amber-300 bg-amber-50 text-amber-900 rounded-lg hover:bg-amber-100 font-semibold transition inline-flex items-center gap-2"
           >
             <AlertTriangle className="w-5 h-5" />
-            Compliance
+            Compliance Center
           </Link>
         </div>
 

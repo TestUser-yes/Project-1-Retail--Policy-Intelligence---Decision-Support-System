@@ -18,14 +18,13 @@ app = FastAPI(
 )
 
 # Enable CORS FIRST (before other middleware)
-# Allow all localhost:30xx ports since Next.js auto-assigns ports
-import re
+# Allow all localhost ports for Next.js dev flexibility
 cors_origins = []
-# Add all localhost ports from 3000-3099 for Next.js dev flexibility
+# Add all localhost ports from 3000-3099 for Next.js
 for port in range(3000, 3100):
     cors_origins.append(f"http://localhost:{port}")
     cors_origins.append(f"http://127.0.0.1:{port}")
-# Add Vite fallback
+# Add Vite/dev server fallback
 cors_origins.extend([
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -34,9 +33,10 @@ cors_origins.extend([
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_credentials=True,
+    allow_credentials=True,  # CRITICAL: Must be True for cookies to work
     allow_methods=["*"],
     allow_headers=["*", "Authorization"],
+    expose_headers=["*"],  # Allow frontend to read response headers
 )
 
 # Request tracing middleware

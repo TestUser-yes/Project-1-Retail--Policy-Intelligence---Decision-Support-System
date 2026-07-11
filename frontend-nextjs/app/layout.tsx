@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Navbar from './components/Navbar';
+import { RootProvider } from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -18,10 +19,12 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body>
-        <Navbar />
-        <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-          {children}
-        </main>
+        <RootProvider>
+          <Navbar />
+          <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+            {children}
+          </main>
+        </RootProvider>
       </body>
     </html>
   );

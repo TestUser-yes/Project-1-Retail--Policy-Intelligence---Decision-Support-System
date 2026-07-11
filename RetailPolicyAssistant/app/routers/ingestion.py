@@ -7,7 +7,7 @@ Phase 2 (Data Retrieval):  Query → Embed → Vector Search → Return Chunks
 import tempfile
 from pathlib import Path
 from datetime import datetime
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -80,6 +80,7 @@ class RetrieveResponse(BaseModel):
 
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest_document(
+    request: Request,
     file: UploadFile = File(..., description="PDF file to ingest"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -169,7 +170,8 @@ async def ingest_document(
 
 @router.post("/retrieve", response_model=RetrieveResponse)
 async def retrieve_documents(
-    request: RetrieveRequest,
+    request_data: RetrieveRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -199,7 +201,7 @@ async def retrieve_documents(
 
         tracer.log_event(
             "retrieve_start",
-            {"query": request.query[:100], "k": request.k, "user_id": current_user.user_id}
+            {"query": request_data.query[:100], "k": request_data.k, "user_id": current_user.user_id}
         )
 
         # Retrieve chunks using multi-agent retrieval
@@ -210,7 +212,7 @@ async def retrieve_documents(
 
         # Suppress Unicode printing from multi-agent retrieval (Windows console compatibility)
         with contextlib.redirect_stdout(io.StringIO()):
-            retrieval_result = retrieve_with_multi_agent(request.query, top_k=request.k * 2)
+            retrieval_result = retrieve_with_multi_agent(request_data.query, top_k=request_data.k * 2)
         chunks = retrieval_result.get("documents", [])
         retrieval_method = retrieval_result.get("retrieval_method", "multi_agent")
         retrieval_agents = retrieval_result.get("agents_used", [])
@@ -218,7 +220,7 @@ async def retrieve_documents(
 
         if not chunks:
             return RetrieveResponse(
-                query=request.query,
+                query=request_data.query,
                 chunks=[],
                 count=0,
                 timestamp=datetime.utcnow().isoformat(),
@@ -229,7 +231,7 @@ async def retrieve_documents(
 
         # Format chunks with metadata
         chunk_data = []
-        for chunk in chunks[:request.k]:  # Limit to requested k
+        for chunk in chunks[:request_data.k]:  # Limit to requested k
             metadata = ChunkMetadata(
                 id=chunk.id,
                 document_name=chunk.document_name,
@@ -247,11 +249,11 @@ async def retrieve_documents(
         # Log success
         tracer.log_event(
             "retrieve_complete",
-            {"query": request.query[:100], "chunks_retrieved": len(chunk_data)}
+            {"query": request_data.query[:100], "chunks_retrieved": len(chunk_data)}
         )
 
         return RetrieveResponse(
-            query=request.query,
+            query=request_data.query,
             chunks=chunk_data,
             count=len(chunk_data),
             timestamp=datetime.utcnow().isoformat(),
