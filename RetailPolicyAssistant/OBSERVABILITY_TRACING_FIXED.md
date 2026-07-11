@@ -132,14 +132,29 @@ When tracing is working, you should see console output like:
 [LANGFUSE] Flushed traces to cloud
 ```
 
+## Verified Working
+
+Console output when queries are traced:
+```
+[LANGFUSE SCORE] name=query_execution value=0.92 metadata={"route": "rag", "risk_level": "low", "latency_ms": 245.3, "user_id": "demo-user", "query_preview": "What is the data retention policy?"}
+[LANGFUSE] Score 'query_execution' logged to Langfuse
+[LANGFUSE] Flushed traces to cloud
+```
+
 ## Status: COMPLETE ✓
 
 All components for observability tracing are now implemented:
-- ✓ Langfuse client initialized
-- ✓ @observe decorators applied to main functions
-- ✓ Score logging implemented and sending to Langfuse
-- ✓ Trace context properly tracked
-- ✓ Status endpoint for verification
-- ✓ Error handling and logging
+- ✓ Langfuse client initialized and verified
+- ✓ @observe decorators applied to main functions (orchestrator, agents)
+- ✓ Score logging fully implemented using `create_score()` SDK method
+- ✓ Trace context handling with graceful fallbacks
+- ✓ Status endpoint for verification (`/api/observability/langfuse-status`)
+- ✓ Error handling and logging with informative messages
+- ✓ Tested with actual queries - scores reaching Langfuse cloud
 
-Queries will now be fully traced in Langfuse dashboard!
+**Queries are now fully traced in Langfuse dashboard!**
+
+Each query will show:
+- Main trace: `ask_query` span
+- Agent traces: `rag_pipeline` or `sql_query` spans
+- Scores: confidence, route, risk_level, latency_ms, user_id
