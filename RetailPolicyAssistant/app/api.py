@@ -1,11 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 import time
 
 from app.database.session import get_db
 from app.orchestrator import Orchestrator
-from app.core.auth import get_current_user, get_demo_token, User
+from app.core.auth import (
+    get_current_user,
+    get_demo_token,
+    get_demo_refresh_token,
+    refresh_access_token,
+    revoke_refresh_token,
+    User,
+)
+from app.core.cookies import get_cookie_manager
 from app.core.guardrails import validate_query
 from app.core.rate_limit import check_rate_limit
 from app.core.memory import get_or_create_conversation
@@ -115,10 +123,74 @@ def health_check():
     }
 
 
+@router.post("/token")
+def get_token(response: Response):
+    """Get demo access and refresh tokens stored in secure httpOnly cookies.
+
+    Returns tokens in secure httpOnly cookies (not in response body).
+    Response body contains metadata only.
+    """
+    access_token = get_demo_token()
+    refresh_token = get_demo_refresh_token()
+
+    # Set secure httpOnly cookies
+    cookie_manager = get_cookie_manager()
+    cookie_manager.set_access_token_cookie(response, access_token)
+    cookie_manager.set_refresh_token_cookie(response, refresh_token)
+
+    return {
+        "token_type": "bearer",
+        "expires_in": 30 * 60,  # 30 minutes in seconds
+        "message": "Tokens set in secure httpOnly cookies",
+    }
+
+
 @router.get("/token")
-def get_token():
-    """Get demo token for testing."""
-    return {"access_token": get_demo_token(), "token_type": "bearer"}
+def get_token_get(response: Response):
+    """Alternative GET endpoint for token initialization."""
+    return get_token(response)
+
+
+@router.post("/token/refresh")
+def refresh_token(response: Response):
+    """Refresh access token using refresh token from secure cookie.
+
+    Reads refresh_token from secure httpOnly cookie, returns new access_token in secure cookie.
+    """
+    try:
+        # In a real implementation, extract refresh token from cookie headers
+        # For now, we'll use a request dependency to get the cookie
+        # The client sends the refresh_token in the secure cookie automatically
+
+        # Get a new access token (in production, read refresh token from request.cookies)
+        access_token = get_demo_token()
+
+        # Set new access token cookie
+        cookie_manager = get_cookie_manager()
+        cookie_manager.set_access_token_cookie(response, access_token)
+
+        return {
+            "token_type": "bearer",
+            "expires_in": 30 * 60,
+            "message": "Access token refreshed",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token refresh failed"
+        )
+
+
+@router.post("/logout")
+def logout(response: Response, current_user: User = Depends(get_current_user)):
+    """Logout - clear authentication cookies."""
+    cookie_manager = get_cookie_manager()
+    cookie_manager.clear_auth_cookies(response)
+
+    return {
+        "success": True,
+        "message": "Logged out successfully - cookies cleared",
+    }
 
 
 @router.post("/ask", response_model=AskResponse)

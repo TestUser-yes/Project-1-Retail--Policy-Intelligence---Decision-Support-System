@@ -58,7 +58,7 @@ export default function APIDocs() {
           </p>
           <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-900">
-              <strong>Base URL:</strong> <code className="bg-white px-2 py-1 rounded">{process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}</code>
+              <strong>Base URL:</strong> <code className="bg-white px-2 py-1 rounded">{process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}</code>
             </p>
           </div>
         </div>
@@ -93,7 +93,7 @@ export default function APIDocs() {
             <h3 className="font-bold text-gray-900 mb-3">Getting a Token</h3>
             <p className="text-gray-700 mb-3">Call the `/token` endpoint to get an access token:</p>
             <CodeBlock
-              code={`curl -X GET ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/token
+              code={`curl -X GET ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/token
 
 Response:
 {
@@ -105,7 +105,7 @@ Response:
             <h3 className="font-bold text-gray-900 mb-3 mt-6">Using the Token</h3>
             <p className="text-gray-700 mb-3">Include the token in all subsequent requests:</p>
             <CodeBlock
-              code={`curl -X POST ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/ask \\
+              code={`curl -X POST ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/ask \\
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -184,7 +184,7 @@ Response:
 
             <p className="font-semibold text-gray-900 mb-2 mt-4">Example Request:</p>
             <CodeBlock
-              code={`curl -X POST ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/ask \\
+              code={`curl -X POST ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/ask \\
   -H "Authorization: Bearer YOUR_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -224,7 +224,7 @@ Response:
 
             <p className="font-semibold text-gray-900 mb-2 mt-4">Example Request:</p>
             <CodeBlock
-              code={`curl -X GET ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/conversations/550e8400-e29b-41d4-a716-446655440000/history \\
+              code={`curl -X GET ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/conversations/550e8400-e29b-41d4-a716-446655440000/history \\
   -H "Authorization: Bearer YOUR_TOKEN"`}
             />
           </CollapsibleSection>
@@ -355,7 +355,7 @@ Response:
             <CodeBlock
               code={`import axios from 'axios';
 
-const API_URL = '${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}';
+const API_URL = '${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}';
 
 async function askPolicy(query) {
   // Get token
@@ -391,7 +391,7 @@ askPolicy('What is our return policy?');`}
               code={`import requests
 import uuid
 
-API_URL = '${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}'
+API_URL = '${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}'
 
 def ask_policy(query):
     # Get token
@@ -422,10 +422,10 @@ ask_policy('What is our return policy?')`}
           <CollapsibleSection title="cURL">
             <CodeBlock
               code={`# Step 1: Get token
-TOKEN=$(curl -s ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/token | jq -r '.access_token')
+TOKEN=$(curl -s ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/token | jq -r '.access_token')
 
 # Step 2: Submit query
-curl -X POST ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/ask \\
+curl -X POST ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/ask \\
   -H "Authorization: Bearer $TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -444,7 +444,7 @@ curl -X POST ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/ask \
               For interactive API testing and exploration, visit the Swagger UI:
             </p>
             <a
-              href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/docs`}
+              href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/docs`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition"

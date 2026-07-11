@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
 @router.get("")
-async def get_dashboard_data(db: Session = Depends(get_db)):
+async def get_dashboard_data(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get dashboard aggregated data from Neon PostgreSQL."""
     try:
         # Query real database data

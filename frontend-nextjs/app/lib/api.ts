@@ -1,47 +1,101 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
 const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  // Allow credentials (cookies) to be sent with requests
+  withCredentials: true,
 });
 
-// Initialize token on app load
-let tokenPromise: Promise<string> | null = null;
+// Token refresh state
+let isRefreshing = false;
+let refreshPromise: Promise<string> | null = null;
 
-async function ensureToken(): Promise<string> {
-  if (!tokenPromise) {
-    tokenPromise = (async () => {
-      try {
-        // Always fetch fresh token to avoid expiration issues
-        const response = await axios.get(`${API_URL}/token`);
-        const token = response.data.access_token;
-        localStorage.setItem('access_token', token);
-        return token;
-      } catch (error) {
-        console.error('Failed to fetch token:', error);
-        localStorage.removeItem('access_token');
-        tokenPromise = null;
-        throw new Error('Authentication failed');
-      }
-    })();
+// Initialize tokens on app load - now stored in secure httpOnly cookies
+async function initializeTokens(): Promise<void> {
+  try {
+    const response = await axios.post(
+      `${API_URL}/token`,
+      {},
+      { withCredentials: true }
+    );
+    // Tokens are now set as secure httpOnly cookies by the backend
+    // Response contains token info for client-side tracking
+    console.log('[Auth] Tokens initialized and stored in secure cookies');
+  } catch (error) {
+    console.error('Failed to initialize tokens:', error);
+    throw new Error('Authentication failed');
   }
-
-  return tokenPromise;
 }
 
-apiClient.interceptors.request.use(async (config) => {
-  try {
-    const token = await ensureToken();
-    config.headers.Authorization = `Bearer ${token}`;
-  } catch (error) {
-    console.error('Token error:', error);
+async function refreshAccessToken(): Promise<boolean> {
+  // Prevent multiple simultaneous refresh requests
+  if (isRefreshing && refreshPromise) {
+    await refreshPromise;
+    return true;
   }
-  return config;
-});
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      // Backend reads refresh_token from secure cookie and returns new access_token in cookie
+      await axios.post(
+        `${API_URL}/token/refresh`,
+        {},
+        { withCredentials: true }
+      );
+      console.log('[Auth] Token refreshed successfully');
+      return '';
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      throw new Error('Token refresh failed');
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  try {
+    await refreshPromise;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Response interceptor - handle 401 errors and refresh tokens
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If 401 and haven't retried yet, try to refresh token
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+          // Retry the original request with refreshed token
+          return apiClient(originalRequest);
+        }
+      } catch (refreshError) {
+        console.error(
+          'Token refresh failed, user needs to re-authenticate:',
+          refreshError
+        );
+        // Redirect to login or show auth error
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export interface SLOMetrics {
   latency_ms: number;
@@ -61,6 +115,14 @@ export interface IntentModel {
 
 export interface ResultModel {
   result: string;
+}
+
+export interface AgentExecution {
+  agent_name: string;
+  status: string;
+  latency_ms: number;
+  confidence: number;
+  data_source: string;
 }
 
 export interface AskResponse {
@@ -83,6 +145,12 @@ export interface AskResponse {
   sources?: Array<string | { source?: string; policy?: string; section?: string; page?: number }>;
   sql_validation?: string | { query: string; status: string; result: any };
   recommendation?: string;
+  // Agent execution details
+  agents_used?: string[];
+  agent_details?: AgentExecution[];
+  retrieval_method?: string;
+  retrieval_agents?: string[];
+  retrieval_pipeline?: Record<string, any>;
 }
 
 export interface DashboardData {

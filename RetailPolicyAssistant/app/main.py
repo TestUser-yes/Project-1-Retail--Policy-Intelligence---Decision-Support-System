@@ -103,9 +103,11 @@ async def rate_limit_middleware(request: Request, call_next):
 
 from app.routers.observability import router as observability_router
 from app.routers.ingestion import router as ingestion_router
+from app.routers.websocket import router as websocket_router
 
 app.include_router(router)
 app.include_router(dashboard_router)
 app.include_router(observability_router)
 app.include_router(ingestion_router)
+app.include_router(websocket_router)
 

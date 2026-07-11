@@ -6,13 +6,14 @@ from datetime import datetime, timedelta
 from app.database.session import get_db
 from app.models import AIQuery
 from app.core.slo_tracker import get_slo_tracker
+from app.core.auth import get_current_user, User
 from app.observability.langfuse_tracer import get_tracer
 
 router = APIRouter(prefix="/api/observability", tags=["observability"])
 
 
 @router.get("")
-async def get_observability_metrics(db: Session = Depends(get_db)):
+async def get_observability_metrics(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get observability metrics: SLO, latency trends, query analytics."""
     try:
         slo_tracker = get_slo_tracker()
@@ -152,7 +153,7 @@ async def get_observability_metrics(db: Session = Depends(get_db)):
 
 
 @router.get("/langfuse-status")
-async def langfuse_status():
+async def langfuse_status(current_user: User = Depends(get_current_user)):
     """Check Langfuse tracing status and configuration."""
     tracer = get_tracer()
 
@@ -168,7 +169,7 @@ async def langfuse_status():
 
 
 @router.get("/demo-agents")
-async def demo_agents_routing():
+async def demo_agents_routing(current_user: User = Depends(get_current_user)):
     """Demo endpoint showing how multi-agent routing works with example queries."""
     return {
         "title": "Multi-Agent Routing Demo",
