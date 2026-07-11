@@ -231,6 +231,17 @@ def ask(
         db.add(ai_query)
         db.commit()
 
+        # 6c. TRACE SCORES TO LANGFUSE
+        from app.observability.score_tracer import ScoreTracer
+        ScoreTracer.log_query_execution(
+            query=query,
+            route=response.get("route", "unknown"),
+            confidence=response.get("confidence_score", 0.0),
+            risk_level=response.get("risk", {}).get("risk_level", "unknown"),
+            latency_ms=latency_seconds * 1000,
+            user_id=current_user.user_id,
+        )
+
         # 7. Return response with all metadata
         slo_metrics_data = response.get("slo_metrics", {
             "latency_ms": 0,

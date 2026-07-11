@@ -146,7 +146,7 @@ GOLDEN_SET = [
         "expected": {
             "route": "sql",
             "risk": "high",
-            "escalate": False,
+            "escalate": True,
             "answer_contains": ["vendor", "critical"],
         },
     },
@@ -155,7 +155,7 @@ GOLDEN_SET = [
         "expected": {
             "route": "sql",
             "risk": "high",
-            "escalate": False,
+            "escalate": True,
             "answer_contains": ["vendor", "jurisdiction"],
         },
     },
@@ -209,7 +209,7 @@ GOLDEN_SET = [
         "expected": {
             "route": "sql",
             "risk": "high",
-            "escalate": False,
+            "escalate": True,
             "answer_contains": ["retention", "high-risk"],
         },
     },
@@ -237,7 +237,7 @@ GOLDEN_SET = [
         "expected": {
             "route": "hybrid",
             "risk": "high",
-            "escalate": False,
+            "escalate": True,
             "answer_contains": ["vendor", "retention", "compliant"],
         },
     },
@@ -246,7 +246,7 @@ GOLDEN_SET = [
         "expected": {
             "route": "hybrid",
             "risk": "high",
-            "escalate": False,
+            "escalate": True,
             "answer_contains": ["vendor", "compliance"],
         },
     },
@@ -255,7 +255,7 @@ GOLDEN_SET = [
         "expected": {
             "route": "hybrid",
             "risk": "high",
-            "escalate": False,
+            "escalate": True,
             "answer_contains": ["jurisdiction", "vendor", "policy"],
         },
     },
@@ -264,7 +264,7 @@ GOLDEN_SET = [
         "expected": {
             "route": "hybrid",
             "risk": "high",
-            "escalate": False,
+            "escalate": True,
             "answer_contains": ["vendor", "encryption", "fail"],
         },
     },
@@ -273,7 +273,7 @@ GOLDEN_SET = [
         "expected": {
             "route": "hybrid",
             "risk": "high",
-            "escalate": False,
+            "escalate": True,
             "answer_contains": ["vendor", "critical"],
         },
     },
@@ -291,7 +291,7 @@ GOLDEN_SET = [
         "expected": {
             "route": "hybrid",
             "risk": "high",
-            "escalate": False,
+            "escalate": True,
             "answer_contains": ["vendor", "pending", "policy"],
         },
     },
@@ -300,7 +300,7 @@ GOLDEN_SET = [
         "expected": {
             "route": "hybrid",
             "risk": "high",
-            "escalate": False,
+            "escalate": True,
             "answer_contains": ["vendor", "access", "control"],
         },
     },
@@ -309,7 +309,7 @@ GOLDEN_SET = [
         "expected": {
             "route": "hybrid",
             "risk": "high",
-            "escalate": False,
+            "escalate": True,
             "answer_contains": ["vendor", "retention", "compliance"],
         },
     },
@@ -318,7 +318,7 @@ GOLDEN_SET = [
         "expected": {
             "route": "hybrid",
             "risk": "high",
-            "escalate": False,
+            "escalate": True,
             "answer_contains": ["vendor", "critical", "incident"],
         },
     },

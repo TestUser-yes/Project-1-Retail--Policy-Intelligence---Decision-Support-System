@@ -8,6 +8,7 @@ from app.repositories.ai_repo import AIRepository
 from app.core.slo_tracker import get_slo_tracker
 from app.config import get_config
 from app.utils.tokenizer import count_query_response_tokens
+from app.middleware.guardrails_middleware import get_guardrails_middleware
 
 
 class Orchestrator:
@@ -30,9 +31,53 @@ class Orchestrator:
         self.routing_config = self.config.routing
 
     @trace_function("ask_query", as_type="chain")
-    def run(self, query: str):
+    def run(self, query: str, user_role: str = "viewer"):
         """Process query and return demo response."""
         try:
+            # ===== GUARDRAILS LAYER 1-6: INPUT VALIDATION =====
+            middleware = get_guardrails_middleware(user_role=user_role)
+            is_valid, violations = middleware.validate_input(query)
+
+            if not is_valid:
+                self.logger.log("guardrails_block", {"violations": violations})
+                latency = self.metrics.end_timer() if hasattr(self.metrics, 'end_timer') else 0
+                self.logger.log("response", {
+                    "blocked_by": "guardrails",
+                    "violations": violations
+                })
+                return {
+                    "query": query,
+                    "route": "blocked",
+                    "result": {"result": f"Query blocked by security guardrails: {violations}"},
+                    "risk": {"risk_level": "high", "reason": "Guardrails violation"},
+                    "escalate": True,
+                    "escalation_reason": "Security violation detected",
+                    "latency_seconds": latency,
+                    "confidence_score": 0.0,
+                    "guardrails_violations": violations,
+                    "agents_used": [],
+                    "agent_details": [],
+                }
+
+            # ===== GUARDRAILS LAYER 7: RBAC CHECK =====
+            allowed, rbac_reason = middleware.check_access("read")
+            if not allowed:
+                self.logger.log("rbac_block", {"reason": rbac_reason})
+                latency = self.metrics.end_timer() if hasattr(self.metrics, 'end_timer') else 0
+                return {
+                    "query": query,
+                    "route": "blocked",
+                    "result": {"result": f"Access denied: {rbac_reason}"},
+                    "risk": {"risk_level": "high", "reason": "Insufficient permissions"},
+                    "escalate": True,
+                    "escalation_reason": "RBAC violation",
+                    "latency_seconds": latency,
+                    "confidence_score": 0.0,
+                    "guardrails_violations": [rbac_reason],
+                    "agents_used": [],
+                    "agent_details": [],
+                }
+
             self.metrics.start_timer()
             self.logger.log("input", {"query": query})
 
@@ -156,6 +201,9 @@ class Orchestrator:
                     elif isinstance(source, str):
                         formatted_sources.append({"document": source})
 
+            # ===== GUARDRAILS LAYER 2, 3, 8: OUTPUT SANITIZATION =====
+            sanitized_result = middleware.sanitize_output(str(result))
+
             # Build response with SLO metrics
             return {
                 "query": query,
@@ -165,7 +213,7 @@ class Orchestrator:
                 },
                 "route": route,
                 "result": {
-                    "result": str(result),
+                    "result": sanitized_result,
                 },
                 "risk": {
                     "risk_level": risk_result.get("risk_level", "low"),
@@ -193,6 +241,15 @@ class Orchestrator:
                 "retrieval_method": retrieval_method,
                 "retrieval_agents": retrieval_agents,
                 "retrieval_pipeline": retrieval_pipeline,
+                # Guardrails status (all 8 layers)
+                "guardrails_status": {
+                    "input_validated": True,
+                    "rbac_checked": True,
+                    "output_sanitized": True,
+                    "pii_masked": True,
+                    "user_role": user_role,
+                    "violations": middleware.violations if middleware.violations else []
+                }
             }
 
         except Exception as exc:

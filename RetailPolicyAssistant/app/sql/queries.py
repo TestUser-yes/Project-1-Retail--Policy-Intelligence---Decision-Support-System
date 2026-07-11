@@ -28,7 +28,7 @@ def answer_sql(query: str) -> dict:
         query_lower = query.lower()
 
         # VENDOR QUERIES - Critical Findings
-        if "vendor" in query_lower and "critical" in query_lower and "finding" in query_lower:
+        if "vendor" in query_lower and "critical" in query_lower and ("finding" in query_lower or "findings" in query_lower):
             vendors = db.query(Vendor).filter(Vendor.risk_score >= 80).all()
             if vendors:
                 result = f"Found {len(vendors)} vendors with critical findings:\n"

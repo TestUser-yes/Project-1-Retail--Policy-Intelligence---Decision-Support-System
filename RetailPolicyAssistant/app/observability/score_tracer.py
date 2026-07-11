@@ -1,0 +1,145 @@
+"""LangFuse score and evaluation tracing."""
+
+from typing import Optional, Dict, Any
+import json
+
+
+class ScoreTracer:
+    """Traces confidence scores and evaluation metrics to LangFuse."""
+
+    @staticmethod
+    def log_score(
+        score_name: str,
+        score_value: float,
+        metadata: Optional[Dict[str, Any]] = None
+    ):
+        """
+        Log a score to LangFuse trace.
+
+        Args:
+            score_name: Name of the score (e.g., "confidence", "accuracy", "route_correctness")
+            score_value: Score value (0.0-1.0)
+            metadata: Additional metadata to attach to the score
+        """
+        try:
+            # Create metadata payload
+            meta_dict = metadata or {}
+            meta_str = json.dumps(meta_dict) if meta_dict else "{}"
+
+            # Log to console for visibility
+            print(f"[LANGFUSE SCORE] name={score_name} value={score_value:.2f} metadata={meta_str}")
+
+            # Send to LangFuse client if available
+            from app.observability.langfuse_tracer import get_tracer
+
+            tracer = get_tracer()
+            if tracer.is_enabled() and tracer.client:
+                # Get current trace context from Langfuse
+                from langfuse.context import get_current_trace_id, get_current_observation_id
+
+                trace_id = get_current_trace_id()
+                observation_id = get_current_observation_id()
+
+                if trace_id or observation_id:
+                    # We're within a traced context
+                    tracer.client.score(
+                        name=score_name,
+                        value=score_value,
+                        data_type="NUMERIC",
+                        comment=meta_str,
+                        trace_id=trace_id,
+                        observation_id=observation_id
+                    )
+                    print(f"[LANGFUSE] Score '{score_name}' logged to Langfuse (trace_id={trace_id})")
+                else:
+                    # No active trace context, create a standalone event
+                    tracer.client.score(
+                        name=score_name,
+                        value=score_value,
+                        data_type="NUMERIC",
+                        comment=meta_str
+                    )
+                    print(f"[LANGFUSE] Score '{score_name}' logged to Langfuse (no active trace)")
+            else:
+                print(f"[INFO] Langfuse not enabled, score logged to console only")
+
+        except Exception as e:
+            # Don't fail query if score tracing fails
+            print(f"[WARNING] Score tracing failed (query will continue): {e}")
+
+    @staticmethod
+    def log_evaluation_result(
+        result_id: str,
+        evaluation_metrics: Dict[str, float],
+        test_name: str
+    ):
+        """
+        Log evaluation results to LangFuse.
+
+        Args:
+            result_id: Unique result ID
+            evaluation_metrics: Dict of metric_name -> score
+            test_name: Name of test run
+        """
+        try:
+            # Format metrics for logging
+            metrics_str = json.dumps(evaluation_metrics, indent=2)
+
+            print(f"[LANGFUSE EVAL] test_name={test_name} result_id={result_id}")
+            print(f"Metrics:\n{metrics_str}")
+
+            # Log each metric individually
+            for metric_name, metric_value in evaluation_metrics.items():
+                print(f"  - {metric_name}: {metric_value:.4f}")
+
+            # Send to LangFuse if available
+            from app.observability.langfuse_tracer import get_tracer
+
+            tracer = get_tracer()
+            if tracer.is_enabled() and tracer.client:
+                # Log each metric as a score to Langfuse
+                for metric_name, metric_value in evaluation_metrics.items():
+                    tracer.client.score(
+                        name=metric_name,
+                        value=metric_value,
+                        data_type="NUMERIC",
+                        comment=f"Evaluation: {test_name}, Result: {result_id}"
+                    )
+                print(f"[LANGFUSE] {len(evaluation_metrics)} evaluation metrics logged to Langfuse")
+            else:
+                print(f"[INFO] Langfuse not enabled, metrics logged to console only")
+
+        except Exception as e:
+            print(f"[WARNING] Evaluation tracing failed (metrics will be logged): {e}")
+
+    @staticmethod
+    def log_query_execution(
+        query: str,
+        route: str,
+        confidence: float,
+        risk_level: str,
+        latency_ms: float,
+        user_id: str = "anonymous"
+    ):
+        """
+        Log a complete query execution with all scores.
+
+        Args:
+            query: The user query
+            route: Route decision (rag, sql, hybrid)
+            confidence: Confidence score 0.0-1.0
+            risk_level: Risk level (low, medium, high)
+            latency_ms: Query latency in milliseconds
+            user_id: User who made the query
+        """
+        ScoreTracer.log_score(
+            score_name="query_execution",
+            score_value=confidence,
+            metadata={
+                "route": route,
+                "risk_level": risk_level,
+                "latency_ms": round(latency_ms, 2),
+                "user_id": user_id,
+                "query_preview": query[:100] if query else "",
+            }
+        )

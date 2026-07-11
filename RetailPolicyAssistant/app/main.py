@@ -7,6 +7,9 @@ from app.routers.dashboard import router as dashboard_router
 from app.core.rate_limit import get_rate_limiter
 from app.observability.langfuse_tracer import get_tracer
 
+# Initialize Langfuse tracer at startup (before any requests)
+_tracer = get_tracer()
+
 
 app = FastAPI(
     title="Retail Policy Intelligence System",

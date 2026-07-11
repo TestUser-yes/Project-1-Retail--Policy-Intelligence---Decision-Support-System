@@ -52,5 +52,24 @@ class EvaluationRepository:
         run.overall_score = payload["overall_score"]
         self.db.commit()
         self.db.refresh(run)
+
+        # TRACE EVALUATION SCORES TO LANGFUSE
+        from app.observability.score_tracer import ScoreTracer
+
+        ScoreTracer.log_evaluation_result(
+            result_id=str(run_id),
+            evaluation_metrics={
+                "route_accuracy": payload["route_accuracy"],
+                "answer_accuracy": payload["answer_accuracy"],
+                "risk_accuracy": payload["risk_accuracy"],
+                "escalation_accuracy": payload["escalation_accuracy"],
+                "high_risk_escalation_accuracy": payload["high_risk_escalation_accuracy"],
+                "overall_score": payload["overall_score"],
+                "average_latency_ms": payload["average_latency"],
+                "p95_latency_ms": payload["p95_latency"],
+            },
+            test_name=f"evaluation_run_{run_id}"
+        )
+
         return run
 

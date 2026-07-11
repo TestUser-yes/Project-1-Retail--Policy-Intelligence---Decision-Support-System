@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from app.database.session import get_db
 from app.models import AIQuery
 from app.core.slo_tracker import get_slo_tracker
+from app.observability.langfuse_tracer import get_tracer
 
 router = APIRouter(prefix="/api/observability", tags=["observability"])
 
@@ -148,6 +149,22 @@ async def get_observability_metrics(db: Session = Depends(get_db)):
                 }
             }
         }
+
+
+@router.get("/langfuse-status")
+async def langfuse_status():
+    """Check Langfuse tracing status and configuration."""
+    tracer = get_tracer()
+
+    return {
+        "langfuse_enabled": tracer.is_enabled(),
+        "base_url": tracer.base_url if tracer.is_enabled() else "N/A",
+        "client_initialized": tracer.client is not None,
+        "public_key_set": bool(tracer.public_key),
+        "secret_key_set": bool(tracer.secret_key),
+        "status": "ready" if tracer.is_enabled() else "disabled",
+        "message": "Langfuse tracing is active and ready to receive traces" if tracer.is_enabled() else "Langfuse tracing is disabled - check LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY in .env"
+    }
 
 
 @router.get("/demo-agents")

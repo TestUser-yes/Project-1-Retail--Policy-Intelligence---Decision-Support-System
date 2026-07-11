@@ -43,7 +43,6 @@ class LangfuseTracer:
         if self.enabled:
             try:
                 # Initialize the Langfuse client with credentials
-                # This client will be used by @observe decorator automatically
                 self.client = Langfuse(
                     secret_key=self.secret_key,
                     public_key=self.public_key,
@@ -89,14 +88,15 @@ class LangfuseTracer:
         if self.enabled and self.client:
             try:
                 self.client.flush()
+                print(f"[LANGFUSE] Flushed traces to cloud")
             except Exception as e:
                 # Don't print 401 auth errors on every request - log at DEBUG level only
                 error_str = str(e)
                 if "401" in error_str or "Unauthorized" in error_str:
                     # Silently skip 401 - likely invalid credentials in .env
-                    pass
+                    print(f"[LANGFUSE] 401 Auth error - credentials may be invalid")
                 else:
-                    print(f"[WARNING] Langfuse flush failed: {e}")
+                    print(f"[LANGFUSE] Flush failed: {e}")
 
 
 # Global instance
@@ -130,7 +130,15 @@ def trace_function(name: Optional[str] = None, as_type: str = "span"):
     """
     def decorator(func):
         operation_name = name or func.__name__
-        return observe(name=operation_name, as_type=as_type)(func)
+        # Use @observe with the Langfuse client configured
+        # The client is created at module load time, so this will use it
+        try:
+            decorated = observe(name=operation_name, as_type=as_type)(func)
+        except Exception as e:
+            print(f"[WARNING] Failed to apply @observe decorator: {e}")
+            # Return undecorated function if decorator fails
+            decorated = func
+        return decorated
     return decorator
 
 
