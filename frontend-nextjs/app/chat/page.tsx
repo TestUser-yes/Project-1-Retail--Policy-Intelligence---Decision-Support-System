@@ -28,18 +28,21 @@ export default function ChatPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/chat/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, user_id: "demo-user" }),
+      const { ask } = await import("@/app/lib/api").then(m => ({ ask: m.api.ask }));
+      const data = await ask(query);
+
+      setQueryResponse({
+        id: data.query,
+        query: data.query,
+        response: data.result.result,
+        intent: data.intent.intent,
+        risk_level: data.risk.risk_level,
+        confidence: data.confidence_score || 0,
+        escalation_required: data.escalate,
+        latency_ms: data.latency_seconds * 1000,
+        timestamp: new Date().toISOString(),
+        traces: data.agent_details,
       });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setQueryResponse(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to process query");
     } finally {

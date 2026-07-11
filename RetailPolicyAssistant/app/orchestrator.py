@@ -4,7 +4,7 @@ from app.observability.logger import AgentLogger
 from app.observability.metrics import Metrics
 from app.observability.langfuse_tracer import trace_function
 from app.repositories.ai_repo import AIRepository
-# from app.core.cost_tracking import get_cost_tracker, CostSummary
+from app.core.cost_tracking import get_cost_tracker, CostSummary
 from app.core.slo_tracker import get_slo_tracker
 from app.config import get_config
 from app.utils.tokenizer import count_query_response_tokens
@@ -17,8 +17,7 @@ class Orchestrator:
         self.logger = AgentLogger()
         self.metrics = Metrics()
         self.ai_repo = AIRepository(self.db)
-        # self.cost_tracker = get_cost_tracker()
-        self.cost_tracker = None
+        self.cost_tracker = get_cost_tracker()
         self.slo_tracker = get_slo_tracker()
 
         # Load dynamic configuration
@@ -164,9 +163,14 @@ class Orchestrator:
             latency = self.metrics.end_timer()
             slo_metrics = self.slo_tracker.record_latency(latency)
 
-            # Record cost tracking - disabled for now
-            embedding_cost = 0.0
-            completion_cost = 0.0
+            # Record cost tracking with real token counts
+            if self.cost_tracker:
+                self.cost_tracker.track_query_cost(embedding_tokens, completion_tokens)
+                embedding_cost = self.cost_tracker.calculate_embedding_cost(embedding_tokens)
+                completion_cost = self.cost_tracker.calculate_completion_cost(completion_tokens)
+            else:
+                embedding_cost = 0.0
+                completion_cost = 0.0
 
             # Record SLO events
             self.slo_tracker.record_query_outcome(success=True)
@@ -174,12 +178,7 @@ class Orchestrator:
                 self.slo_tracker.record_escalation()
 
             # Get cost summary for response
-            # cost_summary = self.cost_tracker.get_summary() if self.cost_tracker else None
-            class CostSummary:
-                def __init__(self):
-                    self.budget_remaining = 100.0
-                    self.budget_usage_percent = 0.0
-            cost_summary = CostSummary()
+            cost_summary = self.cost_tracker.get_summary() if self.cost_tracker else CostSummary()
             slo_summary = self.slo_tracker.get_summary()
 
             # Use agent's confidence score directly (from RAG/SQL agents)

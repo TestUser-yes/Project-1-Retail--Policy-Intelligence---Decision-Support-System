@@ -20,17 +20,8 @@ export default function EnhancedChatPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/chat/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, user_id: "demo-user" }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const { ask } = await import("@/app/lib/api").then(m => ({ ask: m.api.ask }));
+      const data = await ask(query);
       setQueryResponse(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to process query");
