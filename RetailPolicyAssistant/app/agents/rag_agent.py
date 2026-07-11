@@ -13,11 +13,14 @@ class RAGAgent:
         Retrieves from actual PDF documents indexed in database.
         """
         try:
-            print("\n" + "=" * 60)
-            print("RAG AGENT: Processing query with Multi-Agent Retrieval")
-            print("Retrieving from PDF documents...")
-            print(f"Query: {query}")
-            print("=" * 60)
+            try:
+                print("\n" + "=" * 60)
+                print("RAG AGENT: Processing query with Multi-Agent Retrieval")
+                print("Retrieving from PDF documents...")
+                print(f"Query: {query}")
+                print("=" * 60)
+            except UnicodeEncodeError:
+                pass
 
             # Use multi-agent retrieval to get best documents
             result_dict = answer_rag(query)
@@ -30,10 +33,13 @@ class RAGAgent:
 
             if chunks:
                 # Got documents - use them to generate answer
-                print(f"Found {len(chunks)} relevant document chunks")
-                print(f"Retrieval method: {retrieval_method}")
-                if agents_used:
-                    print(f"Agents used in retrieval: {', '.join(agents_used)}")
+                try:
+                    print(f"Found {len(chunks)} relevant document chunks")
+                    print(f"Retrieval method: {retrieval_method}")
+                    if agents_used:
+                        print(f"Agents used in retrieval: {', '.join(agents_used)}")
+                except UnicodeEncodeError:
+                    pass
 
                 result = result_dict.get("answer", result_dict.get("result", "No answer generated"))
                 sources = result_dict.get("sources", [])
@@ -41,8 +47,11 @@ class RAGAgent:
                 # High confidence when we have actual PDF sources retrieved via multi-agent
                 confidence = 0.92
 
-                print(f"Generated answer from {len(chunks)} document chunks")
-                print(f"Retrieval agents: {len(agents_used)} (Multi-Agent Enhanced)")
+                try:
+                    print(f"Generated answer from {len(chunks)} document chunks")
+                    print(f"Retrieval agents: {len(agents_used)} (Multi-Agent Enhanced)")
+                except UnicodeEncodeError:
+                    pass
 
                 return {
                     "result": result,
@@ -55,7 +64,10 @@ class RAGAgent:
                 }
             else:
                 # No documents found - use fallback
-                print("No relevant documents found, using fallback policy")
+                try:
+                    print("No relevant documents found, using fallback policy")
+                except UnicodeEncodeError:
+                    pass
                 fallback_result = self._generate_fallback_policy(query)
                 return {
                     "result": fallback_result,
@@ -70,11 +82,14 @@ class RAGAgent:
             import traceback
             error_msg = str(e)
 
-            print(f"\nRAG AGENT: Error in multi-agent retrieval")
-            print(f"Error: {error_msg}")
-            print(f"Traceback:")
-            traceback.print_exc()
-            print(f"Using fallback policy response...\n")
+            try:
+                print(f"\nRAG AGENT: Error in multi-agent retrieval")
+                print(f"Error: {error_msg}")
+                print(f"Traceback:")
+                traceback.print_exc()
+                print(f"Using fallback policy response...\n")
+            except UnicodeEncodeError:
+                pass
 
             fallback_result = self._generate_fallback_policy(query)
             return {

@@ -59,7 +59,7 @@ async def get_observability_metrics(db: Session = Depends(get_db)):
                 "time": hour_label,
                 "queries": count,
                 "slo_target_ms": 2000.0,
-                "avg_latency_ms": slo_summary.latency_ms if slo_summary else 0.0
+                "avg_latency_ms": slo_summary.get("average_latency_ms", 0.0) if slo_summary else 0.0
             })
 
         # Recent queries
@@ -82,7 +82,7 @@ async def get_observability_metrics(db: Session = Depends(get_db)):
                 "queries_24h": queries_24h,
                 "avg_confidence": avg_confidence,
                 "escalation_rate": round(escalation_rate, 1),
-                "slo_compliance_rate": round(slo_summary.success_rate * 100, 1) if slo_summary else 100.0,
+                "slo_compliance_rate": round(slo_summary.get("success_rate", 1.0) * 100, 1) if slo_summary else 100.0,
             },
             "risk_distribution": {
                 "high": high_risk,
@@ -95,10 +95,10 @@ async def get_observability_metrics(db: Session = Depends(get_db)):
                 "hybrid": hybrid_count,
             },
             "slo_metrics": {
-                "success_rate": round(slo_summary.success_rate * 100, 1) if slo_summary else 100.0,
-                "avg_latency_ms": slo_summary.latency_ms if slo_summary else 0.0,
-                "target_latency_ms": slo_summary.target_latency_ms if slo_summary else 2000.0,
-                "slo_status": slo_summary.slo_status if slo_summary else "pass",
+                "success_rate": round(slo_summary.get("success_rate", 1.0) * 100, 1) if slo_summary else 100.0,
+                "avg_latency_ms": slo_summary.get("average_latency_ms", 0.0) if slo_summary else 0.0,
+                "target_latency_ms": slo_summary.get("target_latency_ms", 2000.0) if slo_summary else 2000.0,
+                "slo_status": "pass" if (slo_summary and slo_summary.get("average_latency_ms", 0.0) <= slo_summary.get("target_latency_ms", 2000.0)) else "fail",
             },
             "hourly_trends": hourly_trends,
             "recent_queries": recent_queries_list,

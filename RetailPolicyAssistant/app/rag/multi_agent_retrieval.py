@@ -298,29 +298,43 @@ class MultiAgentRetrieval:
 
         try:
             # Step 1: Run semantic and keyword agents in parallel
-            print("\n" + "=" * 70)
-            print("MULTI-AGENT RETRIEVAL PIPELINE")
-            print("=" * 70)
-            print(f"\nSTEP 1: Parallel Retrieval")
-            print("-" * 70)
+            # Use try-except to handle Windows console encoding issues
+            try:
+                print("\n" + "=" * 70)
+                print("MULTI-AGENT RETRIEVAL PIPELINE")
+                print("=" * 70)
+                print(f"\nSTEP 1: Parallel Retrieval")
+                print("-" * 70)
+            except UnicodeEncodeError:
+                # Silently skip printing if encoding fails on Windows
+                pass
 
             # Semantic retrieval
             semantic_results, semantic_details = self.semantic_agent.retrieve(
                 question, top_k=semantic_top_k, db=db
             )
-            print(f"  ✓ Semantic Agent: Retrieved {len(semantic_results)} documents")
-            print(f"    Method: {semantic_details['method']}")
+            try:
+                print(f"  [OK] Semantic Agent: Retrieved {len(semantic_results)} documents")
+                print(f"    Method: {semantic_details['method']}")
+            except UnicodeEncodeError:
+                pass
 
             # Keyword retrieval
             keyword_results, keyword_details = self.keyword_agent.retrieve(
                 question, top_k=keyword_top_k, db=db
             )
-            print(f"  ✓ Keyword Agent: Retrieved {len(keyword_results)} documents")
-            print(f"    Keywords: {keyword_details.get('keywords', [])[:3]}...")
+            try:
+                print(f"  [OK] Keyword Agent: Retrieved {len(keyword_results)} documents")
+                print(f"    Keywords: {keyword_details.get('keywords', [])[:3]}...")
+            except UnicodeEncodeError:
+                pass
 
             # Step 2: Rank and fuse results
-            print(f"\nSTEP 2: Result Ranking & Fusion")
-            print("-" * 70)
+            try:
+                print(f"\nSTEP 2: Result Ranking & Fusion")
+                print("-" * 70)
+            except UnicodeEncodeError:
+                pass
 
             ranked_docs, ranking_details = self.ranking_agent.rank_and_fuse(
                 semantic_results,
@@ -328,19 +342,22 @@ class MultiAgentRetrieval:
                 final_top_k=final_top_k
             )
 
-            print(f"  ✓ Ranking Agent: Fused results")
-            print(f"    Documents fused: {ranking_details['documents_fused']}")
-            print(f"    Final documents: {ranking_details['final_documents']}")
-            print(f"    Weighted fusion: {ranking_details['semantic_weight']*100:.0f}% semantic + {ranking_details['keyword_weight']*100:.0f}% keyword")
-            print(f"    Consensus boost: Applied (30% boost for cross-agent hits)")
+            try:
+                print(f"  [OK] Ranking Agent: Fused results")
+                print(f"    Documents fused: {ranking_details['documents_fused']}")
+                print(f"    Final documents: {ranking_details['final_documents']}")
+                print(f"    Weighted fusion: {ranking_details['semantic_weight']*100:.0f}% semantic + {ranking_details['keyword_weight']*100:.0f}% keyword")
+                print(f"    Consensus boost: Applied (30% boost for cross-agent hits)")
 
-            # Step 3: Build retrieval pipeline info
-            print(f"\nSTEP 3: Pipeline Summary")
-            print("-" * 70)
-            print(f"  Total agents used: 3 (Semantic + Keyword + Ranking)")
-            print(f"  Final documents returned: {len(ranked_docs)}")
-            print(f"  Retrieval quality: Multi-agent enhanced")
-            print("=" * 70 + "\n")
+                # Step 3: Build retrieval pipeline info
+                print(f"\nSTEP 3: Pipeline Summary")
+                print("-" * 70)
+                print(f"  Total agents used: 3 (Semantic + Keyword + Ranking)")
+                print(f"  Final documents returned: {len(ranked_docs)}")
+                print(f"  Retrieval quality: Multi-agent enhanced")
+                print("=" * 70 + "\n")
+            except UnicodeEncodeError:
+                pass
 
             return {
                 "documents": ranked_docs,

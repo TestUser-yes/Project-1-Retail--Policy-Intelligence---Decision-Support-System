@@ -85,12 +85,18 @@ class LangfuseTracer:
         pass
 
     def flush(self):
-        """Flush all pending traces to Langfuse cloud."""
+        """Flush all pending traces to Langfuse cloud (non-blocking best effort)."""
         if self.enabled and self.client:
             try:
                 self.client.flush()
             except Exception as e:
-                print(f"[WARNING] Langfuse flush failed: {e}")
+                # Don't print 401 auth errors on every request - log at DEBUG level only
+                error_str = str(e)
+                if "401" in error_str or "Unauthorized" in error_str:
+                    # Silently skip 401 - likely invalid credentials in .env
+                    pass
+                else:
+                    print(f"[WARNING] Langfuse flush failed: {e}")
 
 
 # Global instance

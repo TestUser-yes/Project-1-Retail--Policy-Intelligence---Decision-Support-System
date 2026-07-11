@@ -51,9 +51,16 @@ async def tracing_middleware(request: Request, call_next):
     # Add latency header for observability
     response.headers["X-Latency-MS"] = str(int(latency_ms))
 
-    # Flush any pending traces (best effort)
+    # Spawn flush as background task (non-blocking) to avoid adding latency
+    # Don't wait for it - Langfuse batches automatically
     if tracer.is_enabled():
-        tracer.flush()
+        # Fire and forget - don't await, don't block response
+        try:
+            import asyncio
+            asyncio.create_task(asyncio.to_thread(tracer.flush))
+        except Exception:
+            # If background task fails, just skip - doesn't affect response
+            pass
 
     return response
 
