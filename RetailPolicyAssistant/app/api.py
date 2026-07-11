@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 import time
@@ -124,7 +124,7 @@ def health_check():
 
 
 @router.post("/token")
-def get_token(response: Response):
+def token_endpoint(response: Response):
     """Get demo access and refresh tokens stored in secure httpOnly cookies.
 
     Returns tokens in secure httpOnly cookies (not in response body).
@@ -145,10 +145,53 @@ def get_token(response: Response):
     }
 
 
-@router.get("/token")
-def get_token_get(response: Response):
-    """Alternative GET endpoint for token initialization."""
-    return get_token(response)
+@router.get("/auth/status")
+def auth_status(request: Request):
+    """Check authentication status and return user info if authenticated.
+
+    This endpoint helps the frontend verify that cookies were set correctly
+    and authentication is working end-to-end.
+    """
+    try:
+        token = None
+
+        # Try to get token from Authorization header
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+
+        # If no header token, try to get from secure cookie
+        if not token:
+            token = request.cookies.get("access_token")
+
+        if not token:
+            return {
+                "authenticated": False,
+                "message": "No authentication token found in headers or cookies",
+            }
+
+        # Try to verify the token
+        from app.core.auth import verify_token
+        payload = verify_token(token, token_type="access")
+
+        return {
+            "authenticated": True,
+            "user_id": payload.get("user_id"),
+            "username": payload.get("username"),
+            "email": payload.get("email"),
+            "role": payload.get("role", "user"),
+            "message": "Authentication successful",
+        }
+    except HTTPException as e:
+        return {
+            "authenticated": False,
+            "message": f"Authentication failed: {e.detail}",
+        }
+    except Exception as e:
+        return {
+            "authenticated": False,
+            "message": f"Authentication check failed: {str(e)}",
+        }
 
 
 @router.post("/token/refresh")
@@ -182,7 +225,7 @@ def refresh_token(response: Response):
 
 
 @router.post("/logout")
-def logout(response: Response, current_user: User = Depends(get_current_user)):
+def logout(request: Request, response: Response, current_user: User = Depends(get_current_user)):
     """Logout - clear authentication cookies."""
     cookie_manager = get_cookie_manager()
     cookie_manager.clear_auth_cookies(response)
@@ -195,7 +238,8 @@ def logout(response: Response, current_user: User = Depends(get_current_user)):
 
 @router.post("/ask", response_model=AskResponse)
 def ask(
-    request: AskRequest,
+    request_data: AskRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -209,8 +253,8 @@ def ask(
     - Permission checking
     - Langfuse observability tracing
     """
-    query = request.query
-    conversation_id = request.conversation_id
+    query = request_data.query
+    conversation_id = request_data.conversation_id
     start_time = time.time()
 
     # Note: Langfuse tracing is handled via @observe decorators on:
@@ -374,6 +418,7 @@ def ask(
 @router.get("/conversations/{conversation_id}/history", response_model=ConversationHistoryModel)
 def get_conversation_history(
     conversation_id: str,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
