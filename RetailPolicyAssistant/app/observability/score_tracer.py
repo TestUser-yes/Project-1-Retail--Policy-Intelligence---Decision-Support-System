@@ -34,15 +34,21 @@ class ScoreTracer:
 
             tracer = get_tracer()
             if tracer.is_enabled() and tracer.client:
-                # Get current trace context from Langfuse
-                from langfuse.context import get_current_trace_id, get_current_observation_id
+                # Try to get current trace context from Langfuse
+                trace_id = None
+                observation_id = None
 
-                trace_id = get_current_trace_id()
-                observation_id = get_current_observation_id()
+                try:
+                    from langfuse.context import get_current_trace_id, get_current_observation_id
+                    trace_id = get_current_trace_id()
+                    observation_id = get_current_observation_id()
+                except (ImportError, AttributeError):
+                    # Langfuse version doesn't have context module
+                    pass
 
-                if trace_id or observation_id:
-                    # We're within a traced context
-                    tracer.client.score(
+                # Log score to Langfuse using create_score() method
+                try:
+                    tracer.client.create_score(
                         name=score_name,
                         value=score_value,
                         data_type="NUMERIC",
@@ -50,16 +56,22 @@ class ScoreTracer:
                         trace_id=trace_id,
                         observation_id=observation_id
                     )
-                    print(f"[LANGFUSE] Score '{score_name}' logged to Langfuse (trace_id={trace_id})")
-                else:
-                    # No active trace context, create a standalone event
-                    tracer.client.score(
-                        name=score_name,
-                        value=score_value,
-                        data_type="NUMERIC",
-                        comment=meta_str
-                    )
-                    print(f"[LANGFUSE] Score '{score_name}' logged to Langfuse (no active trace)")
+                    ctx_info = ""
+                    if trace_id:
+                        ctx_info = f" (trace_id={trace_id[:8]}...)"
+                    print(f"[LANGFUSE] Score '{score_name}' logged to Langfuse{ctx_info}")
+                except TypeError:
+                    # Older Langfuse SDK without all params
+                    try:
+                        tracer.client.create_score(
+                            name=score_name,
+                            value=score_value,
+                            data_type="NUMERIC",
+                            comment=meta_str
+                        )
+                        print(f"[LANGFUSE] Score '{score_name}' logged to Langfuse")
+                    except Exception as inner_e:
+                        print(f"[WARNING] Failed to create score: {inner_e}")
             else:
                 print(f"[INFO] Langfuse not enabled, score logged to console only")
 
@@ -99,12 +111,15 @@ class ScoreTracer:
             if tracer.is_enabled() and tracer.client:
                 # Log each metric as a score to Langfuse
                 for metric_name, metric_value in evaluation_metrics.items():
-                    tracer.client.score(
-                        name=metric_name,
-                        value=metric_value,
-                        data_type="NUMERIC",
-                        comment=f"Evaluation: {test_name}, Result: {result_id}"
-                    )
+                    try:
+                        tracer.client.create_score(
+                            name=metric_name,
+                            value=metric_value,
+                            data_type="NUMERIC",
+                            comment=f"Evaluation: {test_name}, Result: {result_id}"
+                        )
+                    except Exception as e:
+                        print(f"[WARNING] Failed to log metric {metric_name}: {e}")
                 print(f"[LANGFUSE] {len(evaluation_metrics)} evaluation metrics logged to Langfuse")
             else:
                 print(f"[INFO] Langfuse not enabled, metrics logged to console only")
