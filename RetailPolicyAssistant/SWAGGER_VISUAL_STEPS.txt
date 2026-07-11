@@ -1,0 +1,375 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                  SWAGGER TESTING: VISUAL STEP-BY-STEP GUIDE                   ║
+║                                                                               ║
+║                    Test Multi-Agent System in Swagger UI                      ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+════════════════════════════════════════════════════════════════════════════════
+ STEP 1: START YOUR SERVER
+════════════════════════════════════════════════════════════════════════════════
+
+Windows Command Prompt / PowerShell:
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ cd c:\Users\Anagha.e\project\RetailPolicy_Intelligence_Decision_Support     │
+│ cd System\RetailPolicyAssistant                                               │
+│                                                                               │
+│ python -m uvicorn app.main:app --reload                                       │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+Expected Output:
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)   │
+│ INFO:     Application startup complete                                        │
+│                                                                               │
+│ ✓ Server is running and ready                                                │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+ STEP 2: OPEN SWAGGER IN BROWSER
+════════════════════════════════════════════════════════════════════════════════
+
+Browser URL:
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ http://localhost:8000/docs                                                    │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+What You'll See:
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                          🔄 SWAGGER UI                                        │
+│ ┌─────────────────────────────────────────────────────────────────────────┐  │
+│ │ Retail Policy AI         📋 swagger.io               v1.0.0             │  │
+│ ├─────────────────────────────────────────────────────────────────────────┤  │
+│ │                                                                         │  │
+│ │ GET /api/health                                  Try it out  Execute    │  │
+│ │ GET /api/token                          ✓ GET    Try it out  Execute    │  │
+│ │ POST /api/ask                           ✓ POST   Try it out  Execute    │  │
+│ │ GET /api/conversations/{conversation_id} ✓ GET  Try it out  Execute    │  │
+│ │ GET /api/observability                  ✓ GET   Try it out  Execute    │  │
+│ │ GET /api/observability/demo-agents      ✓ GET   Try it out  Execute    │  │
+│ │                                                                         │  │
+│ │ ... (more endpoints below)                                             │  │
+│ └─────────────────────────────────────────────────────────────────────────┘  │
+│                                                                               │
+│ ✓ Swagger UI is open and ready                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+ STEP 3: GET AUTHENTICATION TOKEN
+════════════════════════════════════════════════════════════════════════════════
+
+In Swagger:
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 1. Find:    GET /api/token (look for green GET button)                       │
+│                                                                               │
+│    GET /api/token                                   ▼ Click here              │
+│    ├─ Try it out                                                             │
+│    └─ Execute                                                                │
+│                                                                               │
+│ 2. Click:   "Try it out" button                                              │
+│                                                                               │
+│    GET /api/token                                   ✓ TRYING...              │
+│    ├─ Parameters                                                             │
+│    │  (no parameters needed)                                                 │
+│    │                                                                         │
+│    └─ Execute ← CLICK HERE                                                   │
+│                                                                               │
+│ 3. Click:   "Execute" button                                                 │
+│                                                                               │
+│ 4. See:     Response with access_token                                       │
+│                                                                               │
+│    Server response                                                            │
+│    Code: 200                                                                  │
+│    {                                                                          │
+│      "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9sdfXXXX...",      │
+│      "token_type": "bearer"                                                  │
+│    }                                                                          │
+│                                                                               │
+│ 5. COPY:    The long "access_token" string                                   │
+│             (It's very long, copy the whole thing)                           │
+│                                                                               │
+│ ✓ You now have your authentication token                                     │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+ STEP 4: AUTHORIZE IN SWAGGER
+════════════════════════════════════════════════════════════════════════════════
+
+In Swagger (top right):
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                        Top Right Corner of Swagger                            │
+│    ┌─────────────────────────────────────────┐                               │
+│    │  🔒 Authorize    [v]                    │  ← CLICK LOCK ICON             │
+│    └─────────────────────────────────────────┘                               │
+│                                                                               │
+│ A dialog box will appear:                                                    │
+│    ┌─────────────────────────────────────────┐                               │
+│    │ Available authorizations                │                               │
+│    │                                         │                               │
+│    │ HTTPBearer                              │                               │
+│    │                                         │                               │
+│    │ Value:  [________________ Paste here ]  │  ← PASTE YOUR TOKEN            │
+│    │         (eyJ0eXAi...)                   │                               │
+│    │                                         │                               │
+│    │ [Authorize]  [Cancel]                   │  ← CLICK AUTHORIZE             │
+│    └─────────────────────────────────────────┘                               │
+│                                                                               │
+│ Then close the dialog:                                                        │
+│    ✓ Authorization is now set!                                               │
+│    ✓ All endpoints are authenticated                                         │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+ TEST 1: RAG AGENT (Policy Documents)
+════════════════════════════════════════════════════════════════════════════════
+
+In Swagger:
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 1. Find:    POST /api/ask (blue POST button)                                 │
+│                                                                               │
+│    POST /api/ask                                    ▼ Click here              │
+│    ├─ Description: Ask a policy question...                                 │
+│    ├─ Try it out                                                             │
+│    └─ Execute                                                                │
+│                                                                               │
+│ 2. Click:   "Try it out" button                                              │
+│                                                                               │
+│ 3. Enter:   Request body                                                     │
+│                                                                               │
+│    Request body:                                                             │
+│    ┌──────────────────────────────────────────────────┐                      │
+│    │ {                                                │                      │
+│    │   "query": "What is the data retention policy?" │                      │
+│    │ }                                                │                      │
+│    └──────────────────────────────────────────────────┘                      │
+│                                                                               │
+│ 4. Click:   "Execute" button                                                 │
+│                                                                               │
+│ 5. See:     Response                                                         │
+│                                                                               │
+│    Scroll down and look for:                                                 │
+│                                                                               │
+│    {                                                                          │
+│      "query": "What is the data retention policy?",                          │
+│      "route": "rag",                ✓ Shows RAG routing                       │
+│      "agents_used": [                                                         │
+│        "rag_agent"                  ✓ RAG Agent was called                   │
+│      ],                                                                       │
+│      "agent_details": [             ✓ Execution details                      │
+│        {                                                                      │
+│          "agent_name": "RAG Agent",                                          │
+│          "status": "success",       ✓ Success status                         │
+│          "latency_ms": 245.3,       ✓ Took 245ms                             │
+│          "confidence": 0.92,        ✓ 92% confidence (high!)                 │
+│          "data_source": "PDF Documents"  ✓ Source: PDFs                      │
+│        }                                                                      │
+│      ],                                                                       │
+│      "confidence_score": 0.92,                                               │
+│      "sources": ["Data Retention Policy.pdf"],                               │
+│      "result": {"result": "Data retention policy states..."},               │
+│      ...                                                                      │
+│    }                                                                          │
+│                                                                               │
+│ ✓ RAG Agent test PASSED!                                                     │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+ TEST 2: SQL AGENT (Database)
+════════════════════════════════════════════════════════════════════════════════
+
+In Swagger (same POST /api/ask endpoint):
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 1. CLEAR:   Previous query                                                   │
+│                                                                               │
+│ 2. ENTER:   New request body                                                 │
+│                                                                               │
+│    Request body:                                                             │
+│    ┌──────────────────────────────────────────────────────┐                  │
+│    │ {                                                    │                  │
+│    │   "query": "How many vendors do we have?"           │                  │
+│    │ }                                                    │                  │
+│    └──────────────────────────────────────────────────────┘                  │
+│                                                                               │
+│ 3. CLICK:   "Execute" button                                                 │
+│                                                                               │
+│ 4. SEE:     Response (look for)                                              │
+│                                                                               │
+│    {                                                                          │
+│      "query": "How many vendors do we have?",                                │
+│      "route": "sql",                ✓ Shows SQL routing                       │
+│      "agents_used": [               ✓ DIFFERENT agent!                       │
+│        "sql_agent"                  ✓ SQL Agent was called (not RAG)        │
+│      ],                                                                       │
+│      "agent_details": [             ✓ Execution details                      │
+│        {                                                                      │
+│          "agent_name": "SQL Agent",                                          │
+│          "status": "success",       ✓ Success                                │
+│          "latency_ms": 189.7,       ✓ Faster! 189ms (vs 245ms for RAG)      │
+│          "confidence": 0.85,        ✓ 85% confidence (good, different!)     │
+│          "data_source": "Database"  ✓ Source: Database (not PDF)             │
+│        }                                                                      │
+│      ],                                                                       │
+│      "confidence_score": 0.85,                                               │
+│      "sources": ["Database"],       ✓ Different source!                      │
+│      "result": {"result": "42 vendors in system"},                           │
+│      ...                                                                      │
+│    }                                                                          │
+│                                                                               │
+│ ✓ SQL Agent test PASSED!                                                     │
+│ ✓ Proof that DIFFERENT agent was selected!                                  │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+ TEST 3: HYBRID MODE (Both Agents)
+════════════════════════════════════════════════════════════════════════════════
+
+In Swagger (same POST /api/ask endpoint):
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 1. CLEAR:   Previous query                                                   │
+│                                                                               │
+│ 2. ENTER:   New request body                                                 │
+│                                                                               │
+│    Request body:                                                             │
+│    ┌──────────────────────────────────────────────────────┐                  │
+│    │ {                                                    │                  │
+│    │   "query": "Which vendors comply with our          │                  │
+│    │             encryption policy?"                     │                  │
+│    │ }                                                    │                  │
+│    └──────────────────────────────────────────────────────┘                  │
+│                                                                               │
+│ 3. CLICK:   "Execute" button                                                 │
+│                                                                               │
+│ 4. SEE:     Response (look for)                                              │
+│                                                                               │
+│    {                                                                          │
+│      "query": "Which vendors comply with our encryption policy?",            │
+│      "route": "hybrid",             ✓ HYBRID routing!                        │
+│      "agents_used": [               ✓ BOTH agents listed!                    │
+│        "rag_agent",                 ✓ RAG Agent for policy                   │
+│        "sql_agent"                  ✓ SQL Agent for vendors                  │
+│      ],                                                                       │
+│      "agent_details": [             ✓ TWO agent executions!                  │
+│        {                                                                      │
+│          "agent_name": "RAG Agent",                                          │
+│          "status": "success",                                                │
+│          "latency_ms": 245.3,       ✓ RAG latency                            │
+│          "confidence": 0.92,        ✓ RAG confidence                         │
+│          "data_source": "PDF Documents"                                      │
+│        },                                                                     │
+│        {                                                                      │
+│          "agent_name": "SQL Agent",                                          │
+│          "status": "success",                                                │
+│          "latency_ms": 189.7,       ✓ SQL latency                            │
+│          "confidence": 0.85,        ✓ SQL confidence                         │
+│          "data_source": "Database"                                           │
+│        }                                                                      │
+│      ],                                                                       │
+│      "confidence_score": 0.88,      ✓ Combined confidence (0.92+0.85)/2      │
+│      "sources": [                   ✓ Both sources!                          │
+│        "Encryption Policy.pdf",                                              │
+│        "Database"                                                             │
+│      ],                                                                       │
+│      "result": {"result": "Policy Analysis:\n...\n\nDatabase Validation:\n..."}, │
+│      ...                                                                      │
+│    }                                                                          │
+│                                                                               │
+│ ✓ HYBRID test PASSED!                                                        │
+│ ✓ PROOF that BOTH agents work in parallel!                                  │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+ BONUS TEST 1: View Demo Endpoint
+════════════════════════════════════════════════════════════════════════════════
+
+In Swagger:
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 1. Find:    GET /api/observability/demo-agents                               │
+│                                                                               │
+│    GET /api/observability/demo-agents              ▼ Click here               │
+│    ├─ Try it out                                                             │
+│    └─ Execute                                                                │
+│                                                                               │
+│ 2. Click:   "Try it out"                                                     │
+│                                                                               │
+│ 3. Click:   "Execute"                                                        │
+│                                                                               │
+│ 4. See:     Educational response showing:                                    │
+│             • RAG Agent description                                          │
+│             • SQL Agent description                                          │
+│             • Hybrid Mode description                                        │
+│             • Example trigger queries                                        │
+│             • Routing logic rules                                            │
+│                                                                               │
+│ ✓ This is DOCUMENTATION about your multi-agent system                        │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+ BONUS TEST 2: View Observability Statistics
+════════════════════════════════════════════════════════════════════════════════
+
+In Swagger:
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 1. Find:    GET /api/observability                                           │
+│                                                                               │
+│    GET /api/observability                        ▼ Click here                 │
+│    ├─ Try it out                                                             │
+│    └─ Execute                                                                │
+│                                                                               │
+│ 2. Click:   "Try it out"                                                     │
+│                                                                               │
+│ 3. Click:   "Execute"                                                        │
+│                                                                               │
+│ 4. Scroll down and look for:                                                 │
+│                                                                               │
+│    "multi_agent_summary": {          ✓ Multi-agent stats!                    │
+│      "rag_agent_calls": 42,          ✓ RAG Agent called 42 times             │
+│      "sql_agent_calls": 38,          ✓ SQL Agent called 38 times             │
+│      "hybrid_agent_calls": 20,       ✓ Hybrid mode used 20 times             │
+│      "total_agent_calls": 100,       ✓ 100 total calls                       │
+│      "agent_routing_efficiency": {                                           │
+│        "single_agent_percentage": 80.0,    ✓ 80% single agent (fast!)        │
+│        "hybrid_percentage": 20.0           ✓ 20% hybrid (complex)            │
+│      }                                                                        │
+│    }                                                                          │
+│                                                                               │
+│ ✓ This PROVES your system is routing intelligently!                          │
+│ ✓ 80% single-agent = efficient                                               │
+│ ✓ 20% hybrid = handling complex queries                                      │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+ SUMMARY: WHAT YOU PROVED
+════════════════════════════════════════════════════════════════════════════════
+
+Test 1: RAG Agent ✓
+  ├─ agents_used: ["rag_agent"]
+  ├─ Answered policy questions from PDFs
+  └─ Confidence: 0.92
+
+Test 2: SQL Agent ✓
+  ├─ agents_used: ["sql_agent"]
+  ├─ Queried database for vendor data
+  └─ Confidence: 0.85
+
+Test 3: Hybrid Mode ✓
+  ├─ agents_used: ["rag_agent", "sql_agent"]
+  ├─ Combined policy + vendor data
+  └─ Confidence: 0.88
+
+Test 4: Demo Endpoint ✓
+  └─ Educational reference for multi-agent system
+
+Test 5: Observability ✓
+  └─ Proves 80% single-agent, 20% hybrid routing
+
+════════════════════════════════════════════════════════════════════════════════
+
+RESULT: ✓ You have a working multi-agent system!
+
+  NOT just RAG retrieval
+  NOT just a single agent
+
+  ACTUAL: Intelligent orchestration of multiple specialized agents
+
+════════════════════════════════════════════════════════════════════════════════
+                              YOU'RE ALL SET! 🚀
+════════════════════════════════════════════════════════════════════════════════
