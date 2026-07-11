@@ -330,11 +330,12 @@ class Orchestrator:
     def _handle_rag_query(self, query: str) -> tuple:
         """Handle RAG query - call real RAG agent. Returns (result_text, confidence, sources, agent_details)"""
         from app.agents.rag_agent import RAGAgent
+        import time
         try:
-            agent_timer = self.metrics.start_timer()
+            agent_start = time.time()
             rag_agent = RAGAgent()
             result_dict = rag_agent.run(query)
-            agent_latency = self.metrics.end_timer(agent_timer)
+            agent_latency = time.time() - agent_start
 
             result_text = result_dict.get("result", "No policy documents found.")
             confidence = result_dict.get("confidence", 0.5)
@@ -362,11 +363,12 @@ class Orchestrator:
     def _handle_sql_query(self, query: str) -> tuple:
         """Handle SQL query - call real SQL agent. Returns (result_text, confidence, sources, agent_details)"""
         from app.agents.sql_agent import SQLAgent
+        import time
         try:
-            agent_timer = self.metrics.start_timer()
+            agent_start = time.time()
             sql_agent = SQLAgent()
             result_dict = sql_agent.run(query)
-            agent_latency = self.metrics.end_timer(agent_timer)
+            agent_latency = time.time() - agent_start
 
             result_text = result_dict.get("result", "No database results found.")
             confidence = result_dict.get("confidence", 0.5)
@@ -395,18 +397,19 @@ class Orchestrator:
         """Handle hybrid query - combine RAG and SQL. Returns (result_text, confidence, sources, rag_details, sql_details)"""
         from app.agents.rag_agent import RAGAgent
         from app.agents.sql_agent import SQLAgent
+        import time
         try:
             # Run RAG Agent
-            rag_timer = self.metrics.start_timer()
+            rag_start = time.time()
             rag_agent = RAGAgent()
             rag_result = rag_agent.run(query)
-            rag_latency = self.metrics.end_timer(rag_timer)
+            rag_latency = time.time() - rag_start
 
             # Run SQL Agent
-            sql_timer = self.metrics.start_timer()
+            sql_start = time.time()
             sql_agent = SQLAgent()
             sql_result = sql_agent.run(query)
-            sql_latency = self.metrics.end_timer(sql_timer)
+            sql_latency = time.time() - sql_start
 
             rag_text = rag_result.get("result", "")
             sql_text = sql_result.get("result", "")
