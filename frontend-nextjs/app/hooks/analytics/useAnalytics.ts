@@ -22,7 +22,6 @@ export function useAnalytics() {
       // TODO: Fetch from API
       setAnalyticsData([]);
     } catch (error) {
-      console.error("Failed to fetch analytics:", error);
     } finally {
       setIsLoading(false);
     }

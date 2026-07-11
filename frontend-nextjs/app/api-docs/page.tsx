@@ -377,7 +377,6 @@ async function askPolicy(query) {
     }
   );
 
-  console.log('Response:', response.data);
   return response.data;
 }
 

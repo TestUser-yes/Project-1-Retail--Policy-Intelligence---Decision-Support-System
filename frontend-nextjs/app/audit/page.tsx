@@ -21,7 +21,6 @@ export default function AuditPage() {
         setLogs(data.logs || []);
       }
     } catch (error) {
-      console.error("Failed to fetch logs:", error);
     } finally {
       setIsLoading(false);
     }

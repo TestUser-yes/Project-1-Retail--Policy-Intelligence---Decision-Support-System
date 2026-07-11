@@ -44,7 +44,6 @@ export default function AdminPage() {
         setEscalations(data.escalations || []);
       }
     } catch (error) {
-      console.error("Failed to fetch admin data:", error);
     } finally {
       setIsLoading(false);
     }

@@ -34,7 +34,6 @@ export function useWebSocket(
       wsRef.current = new WebSocket(url);
 
       wsRef.current.onopen = () => {
-        console.log('[WebSocket] Connected');
         setIsConnected(true);
         setReconnectAttempts(0);
 
@@ -50,17 +49,14 @@ export function useWebSocket(
           const message = JSON.parse(event.data);
           onMessage?.(message);
         } catch (error) {
-          console.error('[WebSocket] Failed to parse message:', error);
         }
       };
 
       wsRef.current.onerror = (error) => {
-        console.error('[WebSocket] Error:', error);
         onError?.(new Error('WebSocket connection error'));
       };
 
       wsRef.current.onclose = () => {
-        console.log('[WebSocket] Disconnected');
         setIsConnected(false);
 
         // Attempt reconnection
@@ -75,7 +71,6 @@ export function useWebSocket(
         }
       };
     } catch (error) {
-      console.error('[WebSocket] Connection failed:', error);
       onError?.(error as Error);
     }
   }, [token, onMessage, onError, reconnectAttempts]);
@@ -95,7 +90,6 @@ export function useWebSocket(
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
     } else {
-      console.warn('[WebSocket] Not connected, cannot send message');
     }
   }, []);
 

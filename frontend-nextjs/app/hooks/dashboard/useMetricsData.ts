@@ -34,7 +34,6 @@ export function useMetricsData() {
         setHistory((prev) => [...prev.slice(-99), metricsData]); // Keep last 100 data points
       }
     } catch (error) {
-      console.error("Failed to fetch metrics:", error);
     } finally {
       setIsLoading(false);
     }

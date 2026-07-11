@@ -26,7 +26,6 @@ export default function SettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), SAVE_NOTIFICATION_TIMEOUT_MS);
     } catch (error) {
-      console.error('Failed to save settings:', error);
     }
   };
 

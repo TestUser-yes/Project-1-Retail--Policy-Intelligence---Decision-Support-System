@@ -30,7 +30,6 @@ export default function EscalationModal({
         handoff_id: `HO-${Date.now()}`,
       };
 
-      console.log('Handoff submitted:', handoffData);
       // TODO: Send to backend endpoint when ready
       // await api.submitHandoff(handoffData);
 

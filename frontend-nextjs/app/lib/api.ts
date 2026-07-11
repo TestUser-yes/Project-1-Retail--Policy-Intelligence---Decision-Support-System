@@ -25,9 +25,7 @@ async function initializeTokens(): Promise<void> {
     );
     // Tokens are now set as secure httpOnly cookies by the backend
     // Response contains token info for client-side tracking
-    console.log('[Auth] Tokens initialized and stored in secure cookies');
   } catch (error) {
-    console.error('Failed to initialize tokens:', error);
     throw new Error('Authentication failed');
   }
 }
@@ -48,10 +46,8 @@ async function refreshAccessToken(): Promise<boolean> {
         {},
         { withCredentials: true }
       );
-      console.log('[Auth] Token refreshed successfully');
       return '';
     } catch (error) {
-      console.error('Token refresh failed:', error);
       throw new Error('Token refresh failed');
     } finally {
       isRefreshing = false;
@@ -84,10 +80,6 @@ apiClient.interceptors.response.use(
           return apiClient(originalRequest);
         }
       } catch (refreshError) {
-        console.error(
-          'Token refresh failed, user needs to re-authenticate:',
-          refreshError
-        );
         // Redirect to login or show auth error
         return Promise.reject(refreshError);
       }

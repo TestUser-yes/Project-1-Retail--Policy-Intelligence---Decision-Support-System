@@ -102,7 +102,6 @@ export default function Dashboard() {
         setError(null);
       } catch (err) {
         setError(`Failed to load dashboard data: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        console.error('Dashboard load error:', err);
       } finally {
         setLoading(false);
       }

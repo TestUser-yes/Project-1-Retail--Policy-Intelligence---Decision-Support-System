@@ -22,7 +22,6 @@ export function useUserManagement() {
       // TODO: Fetch from API
       setUsers([]);
     } catch (error) {
-      console.error("Failed to fetch users:", error);
     } finally {
       setIsLoading(false);
     }

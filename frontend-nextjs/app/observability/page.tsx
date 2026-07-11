@@ -62,7 +62,6 @@ export default function ObservabilityPage() {
         const observabilityData = await response.json();
         setData(observabilityData);
       } catch (err) {
-        console.error('Failed to load observability data:', err);
         // Set mock data for demo
         setData({
           totalQueries: 1245,

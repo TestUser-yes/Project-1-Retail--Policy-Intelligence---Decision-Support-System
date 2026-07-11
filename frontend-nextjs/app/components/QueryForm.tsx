@@ -26,7 +26,6 @@ export default function QueryForm({ onResult, conversationId }: QueryFormProps) 
         setAuthError('');
       } catch (err: any) {
         setAuthError('Failed to authenticate. Please refresh the page.');
-        console.error('Auth error:', err);
         setAuthenticated(false);
       }
     };
@@ -55,7 +54,6 @@ export default function QueryForm({ onResult, conversationId }: QueryFormProps) 
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || err.message || 'Failed to process query';
       setError(errorMsg);
-      console.error('Query error:', err);
     } finally {
       setLoading(false);
     }

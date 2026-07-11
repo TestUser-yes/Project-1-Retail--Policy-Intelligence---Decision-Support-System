@@ -40,7 +40,6 @@ export default function ComplianceDashboard() {
         });
       }
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
       setStats({
         pendingHandoffs: 0,
         completedToday: 0,
