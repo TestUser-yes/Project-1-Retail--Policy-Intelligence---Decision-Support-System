@@ -77,12 +77,16 @@ class SLOEnforcer:
                 breach_reasons.append(confidence_check["reason"])
                 breached = True
                 if confidence_check["action"] == "escalate":
-                    # Low confidence: return 422 (requires escalation)
+                    # Very low confidence: return 422 (requires escalation)
                     allow = False
                     http_status = 422
                     enforcement_action = "escalate"
                     response["escalate"] = True
-                    response["escalation_reason"] = f"Low confidence: {confidence:.2f} < {self.confidence_min}"
+                    response["escalation_reason"] = f"Very low confidence: {confidence:.2f} < 0.30"
+                elif confidence_check["action"] == "warn":
+                    # Low confidence but not critical: warn with 202
+                    http_status = 202
+                    enforcement_action = "warning"
 
         # Check 3: Overall SLO Status
         if self.enforce_accuracy and allow and slo_status == "fail":
@@ -148,7 +152,7 @@ class SLOEnforcer:
         Returns:
             {
                 "breached": bool,
-                "action": "none" | "escalate",
+                "action": "none" | "warn" | "escalate",
                 "reason": str,
             }
         """
@@ -158,11 +162,19 @@ class SLOEnforcer:
                 "action": "none",
                 "reason": "Confidence OK",
             }
+        elif confidence >= 0.30:
+            # Low confidence but not critical - warn instead of reject
+            return {
+                "breached": True,
+                "action": "warn",
+                "reason": f"Low confidence: {confidence:.2f} < {self.confidence_min}",
+            }
         else:
+            # Very low confidence - escalate
             return {
                 "breached": True,
                 "action": "escalate",
-                "reason": f"Low confidence: {confidence:.2f} < {self.confidence_min}",
+                "reason": f"Very low confidence: {confidence:.2f} < 0.30",
             }
 
     def get_breach_summary(self) -> dict:
