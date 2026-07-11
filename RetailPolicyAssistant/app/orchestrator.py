@@ -301,8 +301,9 @@ class Orchestrator:
         query_lower = query.lower()
 
         # Define keyword sets
-        sql_indicators = ["how many", "count", "list", "entries", "critical findings", "approval status", "audit log", "database"]
+        sql_indicators = ["how many", "count", "list", "entries", "critical findings", "approval status", "audit log", "database", "show", "recent", "current", "is the"]
         compliance_keywords = ["ccpa", "gdpr", "gdpr compliance", "compliant", "compliance", "regulatory", "regulation", "requirement", "standard", "data protection", "privacy", "encryption", "encryption standards", "access control", "incident response", "retention", "retention policy", "breach", "notification", "pii", "personally identifiable"]
+        database_patterns = ["vendor", "audit", "finding", "record", "status", "jurisdiction"]
 
         # Detect keyword presence
         has_vendor = any(w in query_lower for w in self.vendor_keywords)
@@ -310,37 +311,34 @@ class Orchestrator:
         has_compliance = any(kw in query_lower for kw in compliance_keywords)
         has_sql_indicator = any(ind in query_lower for ind in sql_indicators)
         has_show = "show" in query_lower
+        has_db_pattern = any(p in query_lower for p in database_patterns)
 
-        # Priority 1: Strong compliance keywords (not just policy) + vendor → HYBRID
-        if has_compliance and has_vendor:
+        # HIGHEST PRIORITY: SQL indicators override everything else (strongest signal for database query)
+        # "List vendors", "How many vendors", "Show recent", "What is current status" → SQL
+        if has_sql_indicator:
+            # SQL indicators always point to database unless it's explicitly a policy/requirement query
+            if "requirement" not in query_lower and "standard" not in query_lower:
+                return "sql"
+
+        # Priority 2: Strong compliance keywords + vendor + policy → HYBRID
+        if has_compliance and has_vendor and has_policy:
             return "hybrid"
 
-        # Priority 2: Strong compliance keywords only → RAG
-        if has_compliance:
-            return "rag"
-
-        # Priority 3: SQL indicators take precedence for data retrieval queries
-        if has_sql_indicator and not has_compliance:
-            # "how many vendors" type queries → SQL
-            # But only if no compliance keywords present
-            if not has_vendor:
-                return "sql"
-            # For vendor queries with SQL indicators and NO compliance:
-            # "how many vendors" → SQL (not hybrid)
+        # Priority 3: Compliance + vendor (no policy docs needed) → SQL
+        if has_compliance and has_vendor and not has_policy:
             return "sql"
 
-        # Priority 4: Vendor + Policy → HYBRID (policy compliance check)
+        # Priority 4: Strong compliance keywords + policy → RAG
+        if has_compliance and has_policy:
+            return "rag"
+
+        # Priority 5: Vendor + Policy → HYBRID (policy compliance check)
         if has_vendor and has_policy:
             return "hybrid"
 
-        # Priority 5: Policy only → RAG
+        # Priority 6: Policy only → RAG
         if has_policy:
             return "rag"
-
-        # Priority 6: "show" keyword handling for vendor queries
-        if has_show and has_vendor:
-            # "show vendors X" → SQL (database query)
-            return "sql"
 
         # Priority 7: Vendor only → SQL
         if has_vendor:

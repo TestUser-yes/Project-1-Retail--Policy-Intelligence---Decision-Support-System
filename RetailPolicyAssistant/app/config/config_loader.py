@@ -21,6 +21,8 @@ class KeywordConfig:
                 "policy", "procedure", "rule", "guideline", "process",
                 "protocol", "standard", "requirement", "compliance",
                 "approval", "authorization", "permission", "access",
+                "query", "queries", "escalated", "escalate", "audit",
+                "audit log", "count", "entries", "findings", "review",
             ]
         if self.vendor is None:
             self.vendor = [

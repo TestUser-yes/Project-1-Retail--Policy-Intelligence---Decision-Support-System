@@ -60,18 +60,6 @@ class ComplianceReview(Base):
     reviewed_at = Column(DateTime, default=datetime.utcnow)
 
 
-class Vendor(Base):
-    """Vendor information."""
-    __tablename__ = "vendors"
-    
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    name = Column(String(255), nullable=False)
-    contact = Column(String(255))
-    risk_rating = Column(String(20))
-    last_audit = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-
 class RetentionRecord(Base):
     """Data retention records."""
     __tablename__ = "retention_records"
