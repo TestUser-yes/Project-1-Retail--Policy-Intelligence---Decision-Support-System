@@ -7,6 +7,7 @@ Supports in-memory storage for demo, extensible to database backing.
 from typing import List, Dict, Optional
 from datetime import datetime, timezone
 from dataclasses import dataclass, field
+from uuid import uuid4
 
 
 @dataclass
@@ -34,11 +35,11 @@ class ConversationMemory:
         """Initialize conversation memory.
 
         Args:
-            conversation_id: Unique ID for this conversation
+            conversation_id: Unique ID for this conversation (auto-generated if empty)
             user_id: ID of the user (optional)
             max_messages: Maximum messages to keep in memory
         """
-        self.conversation_id = conversation_id
+        self.conversation_id = conversation_id or str(uuid4())
         self.user_id = user_id
         self.max_messages = max_messages
         self.messages: List[Message] = []
@@ -204,12 +205,16 @@ def get_or_create_conversation(conversation_id: str, user_id: str = None) -> Con
     """Get existing conversation or create new one.
 
     Args:
-        conversation_id: Unique ID for conversation
+        conversation_id: Unique ID for conversation (auto-generated if empty)
         user_id: User ID (for new conversations)
 
     Returns:
         ConversationMemory instance
     """
+    # Generate ID if empty
+    if not conversation_id:
+        conversation_id = str(uuid4())
+
     if conversation_id not in _conversations:
         _conversations[conversation_id] = ConversationMemory(
             conversation_id=conversation_id,

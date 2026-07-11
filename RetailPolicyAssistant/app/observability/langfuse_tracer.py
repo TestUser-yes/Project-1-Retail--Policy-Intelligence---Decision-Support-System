@@ -74,6 +74,16 @@ class LangfuseTracer:
         """Check if Langfuse tracing is enabled."""
         return self.enabled
 
+    def log_event(self, name: str, data: dict = None):
+        """Log a simple event (no-op if Langfuse disabled)."""
+        # No-op - Langfuse traces are handled by @observe decorators
+        pass
+
+    def log_error(self, name: str, error_msg: str):
+        """Log an error event (no-op if Langfuse disabled)."""
+        # No-op - error traces handled by @observe decorators
+        pass
+
     def flush(self):
         """Flush all pending traces to Langfuse cloud."""
         if self.enabled and self.client:

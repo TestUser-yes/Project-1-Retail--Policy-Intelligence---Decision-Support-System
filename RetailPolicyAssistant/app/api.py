@@ -61,6 +61,15 @@ class ConversationHistoryModel(BaseModel):
     messages: list[MessageModel]
 
 
+# Agent Execution Details
+class AgentExecutionModel(BaseModel):
+    agent_name: str
+    status: str  # success, error
+    latency_ms: float
+    confidence: float
+    data_source: str  # "PDF Documents", "Database", etc.
+
+
 # Response Schema
 class AskResponse(BaseModel):
     query: str
@@ -82,6 +91,9 @@ class AskResponse(BaseModel):
     sources: list = []
     sql_validation: str = ""
     recommendation: str = ""
+    # Multi-Agent Visibility
+    agents_used: list[str] = []  # ["rag_agent", "sql_agent"]
+    agent_details: list[AgentExecutionModel] = []  # Trace of each agent
 
 
 # -----------------------------
@@ -225,9 +237,14 @@ def ask(
         slo_metrics_data["enforcement_action"] = enforcement["enforcement_action"]
         slo_metrics_data["enforcement_reason"] = enforcement["enforcement_reason"]
 
+        # Convert agent details dict to AgentExecutionModel
+        agent_details_models = []
+        for agent_detail in response.get("agent_details", []):
+            agent_details_models.append(AgentExecutionModel(**agent_detail))
+
         return AskResponse(
             query=response["query"],
-            conversation_id=conversation_id,
+            conversation_id=conversation.conversation_id,
             intent=response["intent"],
             route=response["route"],
             result=response["result"],
@@ -244,6 +261,8 @@ def ask(
             sources=response.get("sources", []),
             sql_validation=response.get("sql_validation", ""),
             recommendation=response.get("recommendation", ""),
+            agents_used=response.get("agents_used", []),
+            agent_details=agent_details_models,
         )
 
     except HTTPException:

@@ -43,9 +43,20 @@ class Settings(BaseSettings):
     LANGFUSE_SECRET_KEY: str = ""
     LANGFUSE_BASE_URL: str = "https://cloud.langfuse.com"
 
+    # -------------------------
+    # SLO Enforcement
+    # -------------------------
+    SLO_ENFORCE_LATENCY: bool = True
+    SLO_ENFORCE_CONFIDENCE: bool = True
+    SLO_ENFORCE_ACCURACY: bool = True
+    SLO_LATENCY_TARGET_MS: int = 2000
+    SLO_LATENCY_HARD_LIMIT_MS: int = 2400
+    SLO_CONFIDENCE_MIN: float = 0.70
+
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).parent.parent.parent / ".env"),
         case_sensitive=False,
+        extra="ignore",
     )
 
 

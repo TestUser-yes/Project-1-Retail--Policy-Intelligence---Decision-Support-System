@@ -66,25 +66,30 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
                 "timestamp": query.created_at.isoformat() if query.created_at else None,
             })
 
-        # Get hourly trends (last 24 hours)
-        now = datetime.utcnow()
+        # Get hourly trends (last 24 hours) - simplified for performance
         hourly_trends = []
-        for i in range(24):
-            hour_start = now - timedelta(hours=23-i)
-            hour_start = hour_start.replace(minute=0, second=0, microsecond=0)
-            hour_end = hour_start + timedelta(hours=1)
+        try:
+            now = datetime.utcnow()
+            for i in range(24):
+                hour_start = now - timedelta(hours=23-i)
+                hour_start = hour_start.replace(minute=0, second=0, microsecond=0)
+                hour_end = hour_start + timedelta(hours=1)
 
-            queries_in_hour = db.query(AIQuery).filter(
-                AIQuery.created_at >= hour_start,
-                AIQuery.created_at < hour_end
-            ).count()
+                queries_in_hour = db.query(AIQuery).filter(
+                    AIQuery.created_at >= hour_start,
+                    AIQuery.created_at < hour_end
+                ).count()
 
-            hour_label = hour_start.strftime("%H:%M")
-            hourly_trends.append({
-                "time": hour_label,
-                "queries": queries_in_hour,
-                "latency": avg_latency_ms / 1000.0 if queries_in_hour > 0 else 0.0
-            })
+                hour_label = hour_start.strftime("%H:%M")
+                hourly_trends.append({
+                    "time": hour_label,
+                    "queries": queries_in_hour,
+                    "latency": avg_latency_ms / 1000.0 if queries_in_hour > 0 else 0.0
+                })
+        except Exception as e:
+            # If hourly trends fail, just use empty list
+            print(f"[WARNING] Hourly trends query failed: {e}")
+            hourly_trends = []
 
         return {
             "totalQueries": total_queries,

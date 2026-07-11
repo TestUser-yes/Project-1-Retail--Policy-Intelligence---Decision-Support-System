@@ -36,6 +36,10 @@ class Orchestrator:
             self.metrics.start_timer()
             self.logger.log("input", {"query": query})
 
+            # Track which agents were used
+            agents_used = []
+            agent_details = []
+
             # Check if query is relevant to the system
             is_relevant = self._is_query_relevant(query)
             self.logger.log("relevance_check", {"relevant": is_relevant})
@@ -49,14 +53,20 @@ class Orchestrator:
             agent_confidence = 0.7  # Default fallback
             agent_sources = []
             if intent == "sql":
-                result, agent_confidence, agent_sources = self._handle_sql_query(query)
+                result, agent_confidence, agent_sources, agent_exec = self._handle_sql_query(query)
                 route = "sql"
+                agents_used.append("sql_agent")
+                agent_details.append(agent_exec)
             elif intent == "rag":
-                result, agent_confidence, agent_sources = self._handle_rag_query(query)
+                result, agent_confidence, agent_sources, agent_exec = self._handle_rag_query(query)
                 route = "rag"
+                agents_used.append("rag_agent")
+                agent_details.append(agent_exec)
             else:
-                result, agent_confidence, agent_sources = self._handle_hybrid_query(query)
+                result, agent_confidence, agent_sources, rag_exec, sql_exec = self._handle_hybrid_query(query)
                 route = "hybrid"
+                agents_used.extend(["rag_agent", "sql_agent"])
+                agent_details.extend([rag_exec, sql_exec])
 
             self.logger.log("execution", {"result": result})
 
@@ -164,6 +174,8 @@ class Orchestrator:
                 "sources": formatted_sources if formatted_sources else ["Policy Database"],
                 "sql_validation": "Valid SQL generated",
                 "recommendation": "Review with compliance officer before implementation",
+                "agents_used": agents_used,
+                "agent_details": agent_details,
             }
 
         except Exception as exc:
@@ -316,42 +328,85 @@ class Orchestrator:
         return "rag"
 
     def _handle_rag_query(self, query: str) -> tuple:
-        """Handle RAG query - call real RAG agent. Returns (result_text, confidence, sources)"""
+        """Handle RAG query - call real RAG agent. Returns (result_text, confidence, sources, agent_details)"""
         from app.agents.rag_agent import RAGAgent
         try:
+            agent_timer = self.metrics.start_timer()
             rag_agent = RAGAgent()
             result_dict = rag_agent.run(query)
+            agent_latency = self.metrics.end_timer(agent_timer)
+
             result_text = result_dict.get("result", "No policy documents found.")
             confidence = result_dict.get("confidence", 0.5)
             sources = result_dict.get("sources", [])
-            return result_text, confidence, sources
+
+            agent_details = {
+                "agent_name": "RAG Agent",
+                "status": "success",
+                "latency_ms": agent_latency * 1000,
+                "confidence": confidence,
+                "data_source": "PDF Documents"
+            }
+            return result_text, confidence, sources, agent_details
         except Exception as e:
             self.logger.log("error", {"error": f"RAG query failed: {str(e)}"})
-            return f"Error retrieving policy: {str(e)}", 0.3, []
+            agent_details = {
+                "agent_name": "RAG Agent",
+                "status": "error",
+                "latency_ms": 0,
+                "confidence": 0.0,
+                "data_source": "PDF Documents"
+            }
+            return f"Error retrieving policy: {str(e)}", 0.3, [], agent_details
 
     def _handle_sql_query(self, query: str) -> tuple:
-        """Handle SQL query - call real SQL agent. Returns (result_text, confidence, sources)"""
+        """Handle SQL query - call real SQL agent. Returns (result_text, confidence, sources, agent_details)"""
         from app.agents.sql_agent import SQLAgent
         try:
+            agent_timer = self.metrics.start_timer()
             sql_agent = SQLAgent()
             result_dict = sql_agent.run(query)
+            agent_latency = self.metrics.end_timer(agent_timer)
+
             result_text = result_dict.get("result", "No database results found.")
             confidence = result_dict.get("confidence", 0.5)
             sources = result_dict.get("sources", [])
-            return result_text, confidence, sources
+
+            agent_details = {
+                "agent_name": "SQL Agent",
+                "status": "success",
+                "latency_ms": agent_latency * 1000,
+                "confidence": confidence,
+                "data_source": "Database"
+            }
+            return result_text, confidence, sources, agent_details
         except Exception as e:
             self.logger.log("error", {"error": f"SQL query failed: {str(e)}"})
-            return f"Error querying database: {str(e)}", 0.3, []
+            agent_details = {
+                "agent_name": "SQL Agent",
+                "status": "error",
+                "latency_ms": 0,
+                "confidence": 0.0,
+                "data_source": "Database"
+            }
+            return f"Error querying database: {str(e)}", 0.3, [], agent_details
 
     def _handle_hybrid_query(self, query: str) -> tuple:
-        """Handle hybrid query - combine RAG and SQL. Returns (result_text, confidence, sources)"""
+        """Handle hybrid query - combine RAG and SQL. Returns (result_text, confidence, sources, rag_details, sql_details)"""
         from app.agents.rag_agent import RAGAgent
         from app.agents.sql_agent import SQLAgent
         try:
+            # Run RAG Agent
+            rag_timer = self.metrics.start_timer()
             rag_agent = RAGAgent()
-            sql_agent = SQLAgent()
             rag_result = rag_agent.run(query)
+            rag_latency = self.metrics.end_timer(rag_timer)
+
+            # Run SQL Agent
+            sql_timer = self.metrics.start_timer()
+            sql_agent = SQLAgent()
             sql_result = sql_agent.run(query)
+            sql_latency = self.metrics.end_timer(sql_timer)
 
             rag_text = rag_result.get("result", "")
             sql_text = sql_result.get("result", "")
@@ -364,7 +419,30 @@ class Orchestrator:
             # Combine sources from both
             combined_sources = rag_sources + sql_sources
 
-            return f"Policy Analysis:\n{rag_text}\n\nDatabase Validation:\n{sql_text}", avg_confidence, combined_sources
+            # Create agent execution details
+            rag_details = {
+                "agent_name": "RAG Agent",
+                "status": "success",
+                "latency_ms": rag_latency * 1000,
+                "confidence": rag_result.get("confidence", 0.5),
+                "data_source": "PDF Documents"
+            }
+            sql_details = {
+                "agent_name": "SQL Agent",
+                "status": "success",
+                "latency_ms": sql_latency * 1000,
+                "confidence": sql_result.get("confidence", 0.5),
+                "data_source": "Database"
+            }
+
+            return f"Policy Analysis:\n{rag_text}\n\nDatabase Validation:\n{sql_text}", avg_confidence, combined_sources, rag_details, sql_details
         except Exception as e:
             self.logger.log("error", {"error": f"Hybrid query failed: {str(e)}"})
-            return f"Error in hybrid analysis: {str(e)}", 0.2, []
+            error_details = {
+                "agent_name": "Hybrid",
+                "status": "error",
+                "latency_ms": 0,
+                "confidence": 0.0,
+                "data_source": "Multiple"
+            }
+            return f"Error in hybrid analysis: {str(e)}", 0.2, [], error_details, error_details
