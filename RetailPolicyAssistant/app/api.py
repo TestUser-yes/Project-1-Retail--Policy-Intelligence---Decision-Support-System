@@ -91,9 +91,13 @@ class AskResponse(BaseModel):
     sources: list = []
     sql_validation: str = ""
     recommendation: str = ""
-    # Multi-Agent Visibility
+    # Multi-Agent Visibility - Level 1 (Orchestration)
     agents_used: list[str] = []  # ["rag_agent", "sql_agent"]
     agent_details: list[AgentExecutionModel] = []  # Trace of each agent
+    # Multi-Agent Visibility - Level 2 (Retrieval)
+    retrieval_method: str = "semantic"  # "semantic", "multi_agent", "fallback"
+    retrieval_agents: list[str] = []  # ["semantic_retrieval_agent", "keyword_retrieval_agent", "ranking_agent"]
+    retrieval_pipeline: dict = {}  # Full retrieval pipeline details
 
 
 # -----------------------------
@@ -261,8 +265,13 @@ def ask(
             sources=response.get("sources", []),
             sql_validation=response.get("sql_validation", ""),
             recommendation=response.get("recommendation", ""),
+            # Level 1: Orchestration
             agents_used=response.get("agents_used", []),
             agent_details=agent_details_models,
+            # Level 2: Retrieval
+            retrieval_method=response.get("retrieval_method", "semantic"),
+            retrieval_agents=response.get("retrieval_agents", []),
+            retrieval_pipeline=response.get("retrieval_pipeline", {}),
         )
 
     except HTTPException:
