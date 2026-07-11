@@ -52,21 +52,34 @@ class Orchestrator:
             # Generate response based on intent
             agent_confidence = 0.7  # Default fallback
             agent_sources = []
+            retrieval_method = "semantic"  # Default
+            retrieval_agents = []  # Default
+            retrieval_pipeline = {}  # Default
+
             if intent == "sql":
-                result, agent_confidence, agent_sources, agent_exec = self._handle_sql_query(query)
+                result, agent_confidence, agent_sources, agent_exec, retr_details = self._handle_sql_query(query)
                 route = "sql"
                 agents_used.append("sql_agent")
                 agent_details.append(agent_exec)
+                # SQL doesn't have retrieval pipeline, so keep defaults
             elif intent == "rag":
-                result, agent_confidence, agent_sources, agent_exec = self._handle_rag_query(query)
+                result, agent_confidence, agent_sources, agent_exec, retr_details = self._handle_rag_query(query)
                 route = "rag"
                 agents_used.append("rag_agent")
                 agent_details.append(agent_exec)
+                # Extract retrieval details
+                retrieval_method = retr_details.get("retrieval_method", "semantic")
+                retrieval_agents = retr_details.get("retrieval_agents", [])
+                retrieval_pipeline = retr_details.get("retrieval_pipeline", {})
             else:
-                result, agent_confidence, agent_sources, rag_exec, sql_exec = self._handle_hybrid_query(query)
+                result, agent_confidence, agent_sources, rag_exec, sql_exec, rag_retr, sql_retr = self._handle_hybrid_query(query)
                 route = "hybrid"
                 agents_used.extend(["rag_agent", "sql_agent"])
                 agent_details.extend([rag_exec, sql_exec])
+                # Use RAG retrieval details for hybrid (both agents used but retrieval comes from RAG)
+                retrieval_method = rag_retr.get("retrieval_method", "semantic")
+                retrieval_agents = rag_retr.get("retrieval_agents", [])
+                retrieval_pipeline = rag_retr.get("retrieval_pipeline", {})
 
             self.logger.log("execution", {"result": result})
 
@@ -176,6 +189,10 @@ class Orchestrator:
                 "recommendation": "Review with compliance officer before implementation",
                 "agents_used": agents_used,
                 "agent_details": agent_details,
+                # Multi-agent retrieval details (Level 2)
+                "retrieval_method": retrieval_method,
+                "retrieval_agents": retrieval_agents,
+                "retrieval_pipeline": retrieval_pipeline,
             }
 
         except Exception as exc:
@@ -199,6 +216,11 @@ class Orchestrator:
                 "sources": [],
                 "sql_validation": "Error",
                 "recommendation": "Please contact support",
+                "agents_used": [],
+                "agent_details": [],
+                "retrieval_method": "semantic",
+                "retrieval_agents": [],
+                "retrieval_pipeline": {},
             }
 
     def _is_query_relevant(self, query: str) -> bool:
@@ -328,7 +350,7 @@ class Orchestrator:
         return "rag"
 
     def _handle_rag_query(self, query: str) -> tuple:
-        """Handle RAG query - call real RAG agent. Returns (result_text, confidence, sources, agent_details)"""
+        """Handle RAG query - call real RAG agent. Returns (result_text, confidence, sources, agent_details, retrieval_details)"""
         from app.agents.rag_agent import RAGAgent
         import time
         try:
@@ -341,6 +363,11 @@ class Orchestrator:
             confidence = result_dict.get("confidence", 0.5)
             sources = result_dict.get("sources", [])
 
+            # Extract retrieval details from RAG agent
+            retrieval_method = result_dict.get("retrieval_method", "semantic")
+            retrieval_agents = result_dict.get("retrieval_agents", [])
+            retrieval_pipeline = result_dict.get("retrieval_pipeline", {})
+
             agent_details = {
                 "agent_name": "RAG Agent",
                 "status": "success",
@@ -348,7 +375,14 @@ class Orchestrator:
                 "confidence": confidence,
                 "data_source": "PDF Documents"
             }
-            return result_text, confidence, sources, agent_details
+
+            retrieval_details = {
+                "retrieval_method": retrieval_method,
+                "retrieval_agents": retrieval_agents,
+                "retrieval_pipeline": retrieval_pipeline,
+            }
+
+            return result_text, confidence, sources, agent_details, retrieval_details
         except Exception as e:
             self.logger.log("error", {"error": f"RAG query failed: {str(e)}"})
             agent_details = {
@@ -358,10 +392,15 @@ class Orchestrator:
                 "confidence": 0.0,
                 "data_source": "PDF Documents"
             }
-            return f"Error retrieving policy: {str(e)}", 0.3, [], agent_details
+            retrieval_details = {
+                "retrieval_method": "semantic",
+                "retrieval_agents": [],
+                "retrieval_pipeline": {},
+            }
+            return f"Error retrieving policy: {str(e)}", 0.3, [], agent_details, retrieval_details
 
     def _handle_sql_query(self, query: str) -> tuple:
-        """Handle SQL query - call real SQL agent. Returns (result_text, confidence, sources, agent_details)"""
+        """Handle SQL query - call real SQL agent. Returns (result_text, confidence, sources, agent_details, retrieval_details)"""
         from app.agents.sql_agent import SQLAgent
         import time
         try:
@@ -381,7 +420,15 @@ class Orchestrator:
                 "confidence": confidence,
                 "data_source": "Database"
             }
-            return result_text, confidence, sources, agent_details
+
+            # SQL doesn't have retrieval pipeline (no multi-agent retrieval)
+            retrieval_details = {
+                "retrieval_method": "sql",
+                "retrieval_agents": [],
+                "retrieval_pipeline": {},
+            }
+
+            return result_text, confidence, sources, agent_details, retrieval_details
         except Exception as e:
             self.logger.log("error", {"error": f"SQL query failed: {str(e)}"})
             agent_details = {
@@ -391,10 +438,15 @@ class Orchestrator:
                 "confidence": 0.0,
                 "data_source": "Database"
             }
-            return f"Error querying database: {str(e)}", 0.3, [], agent_details
+            retrieval_details = {
+                "retrieval_method": "sql",
+                "retrieval_agents": [],
+                "retrieval_pipeline": {},
+            }
+            return f"Error querying database: {str(e)}", 0.3, [], agent_details, retrieval_details
 
     def _handle_hybrid_query(self, query: str) -> tuple:
-        """Handle hybrid query - combine RAG and SQL. Returns (result_text, confidence, sources, rag_details, sql_details)"""
+        """Handle hybrid query - combine RAG and SQL. Returns (result_text, confidence, sources, rag_exec, sql_exec, rag_retr, sql_retr)"""
         from app.agents.rag_agent import RAGAgent
         from app.agents.sql_agent import SQLAgent
         import time
@@ -438,7 +490,21 @@ class Orchestrator:
                 "data_source": "Database"
             }
 
-            return f"Policy Analysis:\n{rag_text}\n\nDatabase Validation:\n{sql_text}", avg_confidence, combined_sources, rag_details, sql_details
+            # Extract retrieval details from RAG result
+            rag_retrieval = {
+                "retrieval_method": rag_result.get("retrieval_method", "semantic"),
+                "retrieval_agents": rag_result.get("retrieval_agents", []),
+                "retrieval_pipeline": rag_result.get("retrieval_pipeline", {}),
+            }
+
+            # SQL doesn't have multi-agent retrieval
+            sql_retrieval = {
+                "retrieval_method": "sql",
+                "retrieval_agents": [],
+                "retrieval_pipeline": {},
+            }
+
+            return f"Policy Analysis:\n{rag_text}\n\nDatabase Validation:\n{sql_text}", avg_confidence, combined_sources, rag_details, sql_details, rag_retrieval, sql_retrieval
         except Exception as e:
             self.logger.log("error", {"error": f"Hybrid query failed: {str(e)}"})
             error_details = {
@@ -448,4 +514,9 @@ class Orchestrator:
                 "confidence": 0.0,
                 "data_source": "Multiple"
             }
-            return f"Error in hybrid analysis: {str(e)}", 0.2, [], error_details, error_details
+            empty_retrieval = {
+                "retrieval_method": "error",
+                "retrieval_agents": [],
+                "retrieval_pipeline": {},
+            }
+            return f"Error in hybrid analysis: {str(e)}", 0.2, [], error_details, error_details, empty_retrieval, empty_retrieval
