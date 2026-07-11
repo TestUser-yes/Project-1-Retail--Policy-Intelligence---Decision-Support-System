@@ -68,6 +68,10 @@ class RetrieveResponse(BaseModel):
     chunks: list[ChunkData] = Field(..., description="Retrieved chunks with metadata")
     count: int = Field(..., description="Number of chunks retrieved")
     timestamp: str = Field(..., description="ISO format timestamp")
+    # Multi-agent retrieval details (Level 2)
+    retrieval_method: str = Field(default="multi_agent", description="Retrieval method used")
+    retrieval_agents: list[str] = Field(default_factory=list, description="Agents used in retrieval")
+    retrieval_pipeline: dict = Field(default_factory=dict, description="Full retrieval pipeline execution details")
 
 
 # ============================================================================
@@ -171,6 +175,8 @@ async def retrieve_documents(
 ):
     """Retrieve relevant document chunks using vector similarity search.
 
+    Updated to use multi-agent retrieval with semantic + keyword agents.
+
     Phase 2 of RAG Flow:
     1. Embed user query
     2. Vector similarity search (pgvector)
@@ -196,8 +202,19 @@ async def retrieve_documents(
             {"query": request.query[:100], "k": request.k, "user_id": current_user.user_id}
         )
 
-        # Retrieve chunks using vector search
-        chunks = retrieve_policy_chunks(request.query, top_k=request.k * 2)
+        # Retrieve chunks using multi-agent retrieval
+        from app.rag.multi_agent_retrieval import retrieve_with_multi_agent
+        import io
+        import sys
+        import contextlib
+
+        # Suppress Unicode printing from multi-agent retrieval (Windows console compatibility)
+        with contextlib.redirect_stdout(io.StringIO()):
+            retrieval_result = retrieve_with_multi_agent(request.query, top_k=request.k * 2)
+        chunks = retrieval_result.get("documents", [])
+        retrieval_method = retrieval_result.get("retrieval_method", "multi_agent")
+        retrieval_agents = retrieval_result.get("agents_used", [])
+        retrieval_pipeline = retrieval_result.get("retrieval_pipeline", {})
 
         if not chunks:
             return RetrieveResponse(
@@ -205,6 +222,9 @@ async def retrieve_documents(
                 chunks=[],
                 count=0,
                 timestamp=datetime.utcnow().isoformat(),
+                retrieval_method=retrieval_method,
+                retrieval_agents=retrieval_agents,
+                retrieval_pipeline=retrieval_pipeline,
             )
 
         # Format chunks with metadata
@@ -235,6 +255,9 @@ async def retrieve_documents(
             chunks=chunk_data,
             count=len(chunk_data),
             timestamp=datetime.utcnow().isoformat(),
+            retrieval_method=retrieval_method,
+            retrieval_agents=retrieval_agents,
+            retrieval_pipeline=retrieval_pipeline,
         )
 
     except HTTPException:

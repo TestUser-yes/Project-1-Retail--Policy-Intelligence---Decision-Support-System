@@ -344,6 +344,7 @@ class MultiAgentRetrieval:
 
             return {
                 "documents": ranked_docs,
+                "retrieval_method": "multi_agent",
                 "agents_used": [
                     "semantic_retrieval_agent",
                     "keyword_retrieval_agent",
