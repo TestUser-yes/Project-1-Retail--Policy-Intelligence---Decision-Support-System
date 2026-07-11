@@ -1,6 +1,7 @@
 """RAG Answer generation - retrieve and answer policy questions."""
 
 from app.rag.retriever import retrieve_policy_chunks
+from app.rag.multi_agent_retrieval import retrieve_with_multi_agent
 from app.llm import LLMService
 from app.prompts import get_rag_template
 
@@ -55,24 +56,42 @@ def _extract_answer_from_chunks(chunks, query: str) -> str:
     return answer.replace('..', '.')
 
 
-def answer_rag(query: str) -> dict:
+def answer_rag(query: str, use_multi_agent: bool = True) -> dict:
     """
-    Answer a query using RAG - retrieve relevant policy chunks and generate answer.
+    Answer a query using RAG with optional multi-agent retrieval.
 
-    Uses standardized RAG templates from app/prompts.py for consistency.
+    Args:
+        query: User question
+        use_multi_agent: If True, uses multi-agent retrieval (semantic + keyword)
+                        If False, uses single semantic retrieval (fallback)
 
     Returns:
     {
         "result": str (the answer - 2-3 sentences maximum),
         "answer": str (same as result for compatibility),
         "sources": list of document chunks with metadata,
-        "confidence": float (0.92 for PDF-backed answers)
+        "confidence": float (0.92 for PDF-backed answers),
+        "documents": list of retrieved documents,
+        "retrieval_method": "multi_agent" or "semantic",
+        "retrieval_details": agent execution details,
+        "agents_used": list of retrieval agent names
     }
     """
     llm = LLMService()
 
-    # Retrieve relevant policy chunks
-    chunks = retrieve_policy_chunks(query, top_k=6)
+    # Retrieve relevant policy chunks using multi-agent approach
+    if use_multi_agent:
+        retrieval_result = retrieve_with_multi_agent(query, top_k=6)
+        chunks = retrieval_result["documents"]
+        retrieval_method = "multi_agent"
+        retrieval_details = retrieval_result.get("retrieval_pipeline", {})
+        agents_used = retrieval_result.get("agents_used", [])
+    else:
+        # Fallback to single semantic retrieval
+        chunks = retrieve_policy_chunks(query, top_k=6)
+        retrieval_method = "semantic"
+        retrieval_details = {"method": "semantic_similarity"}
+        agents_used = ["semantic_retrieval_agent"]
 
     if not chunks:
         return {
@@ -80,6 +99,10 @@ def answer_rag(query: str) -> dict:
             "answer": "No relevant policy documents found for your query.",
             "sources": [],
             "confidence": 0.0,
+            "documents": [],
+            "retrieval_method": retrieval_method,
+            "retrieval_details": retrieval_details,
+            "agents_used": agents_used,
         }
 
     # Format context from top 3 chunks only (not 5) to force conciseness
@@ -133,4 +156,8 @@ def answer_rag(query: str) -> dict:
             for chunk in chunks[:3]  # Only top 3 sources
         ],
         "confidence": 0.92,  # High confidence for RAG with actual PDF sources
+        "documents": chunks,  # Raw documents for orchestrator
+        "retrieval_method": retrieval_method,
+        "retrieval_details": retrieval_details,
+        "agents_used": agents_used,
     }

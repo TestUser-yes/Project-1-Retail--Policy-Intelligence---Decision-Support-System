@@ -1,20 +1,51 @@
 from app.llm import LLMService
 from app.rag.context import build_context
 from app.rag.retriever import retrieve_policy_chunks
+from app.rag.multi_agent_retrieval import retrieve_with_multi_agent
+from app.observability.langfuse_tracer import trace_function
 
 llm = LLMService()
 
 
-def answer_policy_question(question: str):
-    """Complete RAG pipeline: Question -> Retrieval -> Context -> LLM -> Response
-
-    Uses standardized RAG template for proper context/question formatting.
+@trace_function("rag_pipeline_with_multi_agent", as_type="chain")
+def answer_policy_question(question: str, use_multi_agent: bool = True):
     """
-    chunks = retrieve_policy_chunks(question)
+    Complete RAG pipeline with optional multi-agent retrieval.
+
+    Args:
+        question: User query
+        use_multi_agent: If True, uses multi-agent retrieval (default)
+                        If False, uses single semantic retrieval (fallback)
+
+    Returns:
+        {
+            "answer": Generated answer,
+            "sources": Source documents,
+            "retrieval_method": "multi_agent" or "semantic",
+            "retrieval_details": Agent execution details (if multi_agent)
+        }
+    """
+    # Use multi-agent retrieval by default
+    if use_multi_agent:
+        retrieval_result = retrieve_with_multi_agent(question, top_k=6)
+        chunks = retrieval_result["documents"]
+        retrieval_method = "multi_agent"
+        retrieval_details = retrieval_result.get("retrieval_pipeline", {})
+        agents_used = retrieval_result.get("agents_used", [])
+    else:
+        # Fallback to single semantic retrieval
+        chunks = retrieve_policy_chunks(question)
+        retrieval_method = "semantic"
+        retrieval_details = {"method": "semantic_similarity"}
+        agents_used = ["semantic_retrieval_agent"]
+
     if not chunks:
         return {
             "answer": "No relevant policy found.",
             "sources": [],
+            "retrieval_method": retrieval_method,
+            "retrieval_details": retrieval_details,
+            "agents_used": agents_used,
         }
 
     context = build_context(chunks)
@@ -50,4 +81,7 @@ def answer_policy_question(question: str):
             }
             for chunk in chunks
         ],
+        "retrieval_method": retrieval_method,
+        "retrieval_details": retrieval_details,
+        "agents_used": agents_used,
     }

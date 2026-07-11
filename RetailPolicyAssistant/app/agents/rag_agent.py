@@ -7,40 +7,51 @@ class RAGAgent:
 
     @trace_function("rag_pipeline", as_type="chain")
     def run(self, query: str) -> dict:
-        """Run RAG query and return structured result from PDF documents.
+        """Run RAG query with multi-agent retrieval and return structured result.
 
-        Uses standardized RAG templates for proper context/question separation.
+        Uses multi-agent retrieval (semantic + keyword) for superior document matching.
         Retrieves from actual PDF documents indexed in database.
         """
         try:
             print("\n" + "=" * 60)
-            print("RAG AGENT: Processing query")
+            print("RAG AGENT: Processing query with Multi-Agent Retrieval")
             print("Retrieving from PDF documents...")
             print(f"Query: {query}")
             print("=" * 60)
 
-            # Try to get answer from PDFs
-            from app.rag.retriever import retrieve_policy_chunks
+            # Use multi-agent retrieval to get best documents
+            result_dict = answer_rag(query)
+            chunks = result_dict.get("documents", [])
 
-            chunks = retrieve_policy_chunks(query, top_k=6)
+            # Extract retrieval details
+            retrieval_details = result_dict.get("retrieval_details", {})
+            retrieval_method = result_dict.get("retrieval_method", "multi_agent")
+            agents_used = result_dict.get("agents_used", [])
 
             if chunks:
                 # Got documents - use them to generate answer
                 print(f"Found {len(chunks)} relevant document chunks")
-                result_dict = answer_rag(query)
+                print(f"Retrieval method: {retrieval_method}")
+                if agents_used:
+                    print(f"Agents used in retrieval: {', '.join(agents_used)}")
+
                 result = result_dict.get("answer", result_dict.get("result", "No answer generated"))
                 sources = result_dict.get("sources", [])
 
-                # High confidence when we have actual PDF sources
+                # High confidence when we have actual PDF sources retrieved via multi-agent
                 confidence = 0.92
 
                 print(f"Generated answer from {len(chunks)} document chunks")
+                print(f"Retrieval agents: {len(agents_used)} (Multi-Agent Enhanced)")
 
                 return {
                     "result": result,
                     "sources": sources,
                     "confidence": confidence,
                     "from_pdfs": True,
+                    "retrieval_method": retrieval_method,
+                    "retrieval_agents": agents_used,
+                    "retrieval_pipeline": retrieval_details,
                 }
             else:
                 # No documents found - use fallback
@@ -51,13 +62,15 @@ class RAGAgent:
                     "sources": ["Policy Database (Fallback)"],
                     "confidence": 0.75,
                     "from_pdfs": False,
+                    "retrieval_method": "fallback",
+                    "retrieval_agents": [],
                 }
 
         except Exception as e:
             import traceback
             error_msg = str(e)
 
-            print(f"\nRAG AGENT: Error retrieving from PDF documents")
+            print(f"\nRAG AGENT: Error in multi-agent retrieval")
             print(f"Error: {error_msg}")
             print(f"Traceback:")
             traceback.print_exc()
@@ -69,6 +82,8 @@ class RAGAgent:
                 "sources": ["Policy Database (Fallback)"],
                 "confidence": 0.75,
                 "from_pdfs": False,
+                "retrieval_method": "fallback",
+                "retrieval_agents": [],
             }
 
     def _generate_fallback_policy(self, query: str) -> str:
