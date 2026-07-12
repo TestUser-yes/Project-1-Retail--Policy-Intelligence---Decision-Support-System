@@ -243,6 +243,70 @@ class Phase2Evaluator:
         return min(1.0, max(0.0, diversity))
 
 
+def evaluate_phase2_sync(
+    query: str,
+    retrieved_chunks: Optional[List[Dict[str, Any]]] = None,
+    route: str = "rag",
+    retrieval_latency_ms: float = 0.0,
+    retrieval_method: str = "unknown",
+) -> Optional[dict]:
+    """Synchronous Phase 2 evaluation to attach metrics to response immediately.
+
+    Returns dict with precision/recall for immediate response inclusion.
+
+    Args:
+        query: Original user query
+        retrieved_chunks: Retrieved document chunks
+        route: Query route
+        retrieval_latency_ms: Retrieval time
+        retrieval_method: Method used
+
+    Returns:
+        Dict with precision/recall or None
+    """
+    config = get_evaluation_config()
+    if not (config.enable_context_precision or config.enable_context_recall):
+        return None
+
+    try:
+        evaluator = Phase2Evaluator()
+        logger = AgentLogger()
+
+        if retrieved_chunks is None:
+            retrieved_chunks = []
+
+        metrics_dict = {}
+
+        if is_metric_enabled("context_precision"):
+            try:
+                precision_score = evaluator.precision_evaluator.evaluate_precision(
+                    query=query,
+                    retrieved_chunks=retrieved_chunks,
+                    route=route,
+                )
+                metrics_dict["precision"] = round(precision_score, 4)
+            except Exception as e:
+                logger.log("precision_sync_error", {"error": str(e)})
+
+        if is_metric_enabled("context_recall"):
+            try:
+                recall_score = evaluator.recall_evaluator.evaluate_recall(
+                    query=query,
+                    retrieved_chunks=retrieved_chunks,
+                    route=route,
+                )
+                metrics_dict["recall"] = round(recall_score, 4)
+            except Exception as e:
+                logger.log("recall_sync_error", {"error": str(e)})
+
+        return metrics_dict if metrics_dict else None
+
+    except Exception as e:
+        logger = AgentLogger()
+        logger.log("phase2_sync_evaluation_error", {"error": str(e)})
+        return None
+
+
 async def evaluate_phase2(
     response: dict,
     query: str,

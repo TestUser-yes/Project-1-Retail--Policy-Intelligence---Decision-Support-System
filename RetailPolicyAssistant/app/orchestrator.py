@@ -11,7 +11,7 @@ from app.config import get_config
 from app.utils.tokenizer import count_query_response_tokens
 from app.middleware.guardrails_middleware import get_guardrails_middleware
 from app.evaluation.phase1_orchestrator import evaluate_phase1
-from app.evaluation.phase2_orchestrator import evaluate_phase2
+from app.evaluation.phase2_orchestrator import evaluate_phase2, evaluate_phase2_sync
 
 
 class Orchestrator:
@@ -268,13 +268,26 @@ class Orchestrator:
             except Exception as e:
                 self.logger.log("phase1_evaluation_schedule_error", {"error": str(e)})
 
-            # ===== PHASE 2: RETRIEVAL QUALITY EVALUATION (Optional, Async) =====
+            # ===== PHASE 2: RETRIEVAL QUALITY EVALUATION (Optional, Sync + Async) =====
             # Evaluate retrieval quality using Phase 2 metrics
             # Only for RAG/Hybrid routes
             if route in ("rag", "hybrid"):
                 try:
                     retrieved_chunks = response.get("sources", [])
                     retrieval_method = response.get("retrieval_method", "unknown")
+
+                    # Sync evaluation for immediate response inclusion
+                    metrics = evaluate_phase2_sync(
+                        query=query,
+                        retrieved_chunks=retrieved_chunks,
+                        route=route,
+                        retrieval_latency_ms=latency * 1000,
+                        retrieval_method=retrieval_method,
+                    )
+                    if metrics:
+                        response["retrieval_metrics"] = metrics
+
+                    # Async evaluation for database persistence
                     await evaluate_phase2(
                         response=response,
                         query=query,
