@@ -1,5 +1,6 @@
 """Orchestrator for demo: routes queries without calling external services."""
 
+import asyncio
 from app.observability.logger import AgentLogger
 from app.observability.metrics import Metrics
 from app.observability.langfuse_tracer import trace_function
@@ -9,6 +10,7 @@ from app.core.slo_tracker import get_slo_tracker
 from app.config import get_config
 from app.utils.tokenizer import count_query_response_tokens
 from app.middleware.guardrails_middleware import get_guardrails_middleware
+from app.evaluation.phase1_orchestrator import evaluate_phase1
 
 
 class Orchestrator:
@@ -206,7 +208,7 @@ class Orchestrator:
             sanitized_result = middleware.sanitize_output(str(result))
 
             # Build response with SLO metrics
-            return {
+            response = {
                 "query": query,
                 "intent": {
                     "intent": intent,
@@ -253,10 +255,25 @@ class Orchestrator:
                 }
             }
 
+            # ===== PHASE 1: EVALUATION (Optional, Async) =====
+            # Evaluate response using Phase 1 metrics
+            # Runs in background if enabled - does not block user response
+            try:
+                asyncio.create_task(evaluate_phase1(
+                    response=response,
+                    query=query,
+                    route=route,
+                    total_latency_ms=latency * 1000,
+                ))
+            except Exception as e:
+                self.logger.log("phase1_evaluation_schedule_error", {"error": str(e)})
+
+            return response
+
         except Exception as exc:
             self.logger.log("error", {"error": str(exc)})
             latency = self.metrics.end_timer()
-            return {
+            error_response = {
                 "query": query,
                 "intent": {"intent": "rag", "reason": "Error fallback"},
                 "route": "rag",
@@ -280,6 +297,19 @@ class Orchestrator:
                 "retrieval_agents": [],
                 "retrieval_pipeline": {},
             }
+
+            # Still evaluate even on error (for completeness)
+            try:
+                asyncio.create_task(evaluate_phase1(
+                    response=error_response,
+                    query=query,
+                    route="rag",
+                    total_latency_ms=latency * 1000,
+                ))
+            except Exception as e:
+                self.logger.log("phase1_evaluation_schedule_error", {"error": str(e)})
+
+            return error_response
 
     def _is_query_relevant(self, query: str) -> bool:
         """Check if query is relevant to retail policies/vendors.

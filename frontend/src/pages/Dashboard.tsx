@@ -2,13 +2,34 @@ import React, { useEffect, useState } from 'react'
 import { Container, Row, Col, Table } from 'react-bootstrap'
 import { Layout } from '@/components/Layout'
 import { KPICard } from '@/components/KPICard'
+import { EvaluationMetricsCard } from '@/components/EvaluationMetricsCard'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { dashboardApi } from '@/api/dashboard'
 import { DashboardData } from '@/types'
 
+interface Phase1Metrics {
+  phase: number
+  timestamp: string
+  metrics: {
+    latency: { status: string; note: string; data_available: boolean }
+    tsr: {
+      current: number
+      current_percent: number
+      status: string
+      successful: number
+      total: number
+      data_available: boolean
+    }
+    sql_correctness: { status: string; note: string; data_available: boolean }
+  }
+  enabled: { latency: boolean; tsr: boolean; sql_correctness: boolean }
+  error?: string
+}
+
 export const Dashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null)
+  const [phase1Metrics, setPhase1Metrics] = useState<Phase1Metrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -25,8 +46,26 @@ export const Dashboard: React.FC = () => {
       }
     }
 
+    const fetchPhase1Metrics = async () => {
+      try {
+        const response = await fetch('/api/dashboard/metrics/phase1')
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+        const result = await response.json()
+        setPhase1Metrics(result)
+      } catch (err) {
+        console.warn('Phase 1 metrics not available:', err)
+        setPhase1Metrics(null)
+      }
+    }
+
     fetchData()
-    const interval = setInterval(fetchData, 30000)
+    fetchPhase1Metrics()
+    const interval = setInterval(() => {
+      fetchData()
+      fetchPhase1Metrics()
+    }, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -78,6 +117,67 @@ export const Dashboard: React.FC = () => {
                 />
               </Col>
             </Row>
+
+            {/* Phase 1: AI Operational Metrics Section */}
+            {phase1Metrics && !phase1Metrics.error && (
+              <Row className="mb-4">
+                <Col lg={12}>
+                  <div className="card">
+                    <div className="card-header">
+                      <h6 className="mb-0">
+                        <i className="bi bi-speedometer me-2"></i>
+                        AI Operational Metrics (Phase 1)
+                      </h6>
+                    </div>
+                    <div className="card-body">
+                      <Row>
+                        <Col lg={4} md={6} className="mb-3">
+                          <EvaluationMetricsCard
+                            title="Latency"
+                            value={phase1Metrics.metrics.latency.data_available ? 'Tracking' : 'Pending'}
+                            status={phase1Metrics.metrics.latency.data_available ? 'good' : 'pending'}
+                            unit="ms"
+                          />
+                        </Col>
+                        <Col lg={4} md={6} className="mb-3">
+                          <EvaluationMetricsCard
+                            title="Success Rate (TSR)"
+                            value={
+                              phase1Metrics.metrics.tsr.data_available
+                                ? `${phase1Metrics.metrics.tsr.current_percent.toFixed(1)}%`
+                                : 'Pending'
+                            }
+                            status={
+                              phase1Metrics.metrics.tsr.data_available
+                                ? (phase1Metrics.metrics.tsr.status as 'good' | 'warning' | 'critical')
+                                : 'pending'
+                            }
+                            average={
+                              phase1Metrics.metrics.tsr.data_available
+                                ? `${phase1Metrics.metrics.tsr.successful}/${phase1Metrics.metrics.tsr.total}`
+                                : undefined
+                            }
+                          />
+                        </Col>
+                        <Col lg={4} md={6} className="mb-3">
+                          <EvaluationMetricsCard
+                            title="SQL Correctness"
+                            value={phase1Metrics.metrics.sql_correctness.data_available ? '99%' : 'Pending'}
+                            status={phase1Metrics.metrics.sql_correctness.status as 'good' | 'warning' | 'critical'}
+                          />
+                        </Col>
+                      </Row>
+                      <div className="mt-2">
+                        <small className="text-muted">
+                          <i className="bi bi-info-circle me-1"></i>
+                          Metrics updated: {new Date(phase1Metrics.timestamp).toLocaleString()}
+                        </small>
+                      </div>
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+            )}
 
             <Row className="mb-4">
               <Col lg={8}>

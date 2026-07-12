@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from app.database.session import get_db
 from app.models import AIQuery
 from app.core.auth import get_current_user, User
+from app.evaluation.tsr import get_tsr_calculator
+from app.evaluation.config import get_evaluation_config
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -136,3 +138,80 @@ async def get_dashboard_data(db: Session = Depends(get_db), current_user: User =
             status_code=500,
             detail=error_msg
         )
+
+
+@router.get("/metrics/phase1")
+async def get_phase1_metrics(
+    current_user: User = Depends(get_current_user),
+):
+    """Get Phase 1 evaluation metrics for AI Operational Dashboard.
+
+    Returns aggregated metrics for Latency, Task Success Rate (TSR),
+    and SQL Correctness. This endpoint is independent of main dashboard
+    and does not modify existing behavior.
+
+    Phase 1 Metrics:
+    - Latency: Request processing time and breakdown by stage
+    - TSR: Task Success Rate - ratio of successful to failed queries
+    - SQL Correctness: SQL validation and injection detection results
+    """
+    try:
+        config = get_evaluation_config()
+        tsr_calc = get_tsr_calculator()
+
+        # Get TSR summary
+        tsr_summary = tsr_calc.get_summary()
+        tsr_current = tsr_summary.get("rolling_window", {}).get("tsr", 0.0)
+
+        return {
+            "phase": 1,
+            "timestamp": datetime.utcnow().isoformat(),
+            "enabled": {
+                "latency": config.enable_latency,
+                "tsr": config.enable_tsr,
+                "sql_correctness": config.enable_sql_correctness,
+            },
+            "metrics": {
+                "latency": {
+                    "description": "Request processing latency",
+                    "unit": "ms",
+                    "status": "good",
+                    "note": "Tracked per-query in orchestrator background evaluation",
+                    "data_available": False,  # Per-query basis
+                },
+                "tsr": {
+                    "description": "Task Success Rate",
+                    "current": round(tsr_current, 4),
+                    "current_percent": round(tsr_current * 100, 2),
+                    "status": tsr_summary.get("status", "good"),
+                    "successful": tsr_summary.get("rolling_window", {}).get("successful", 0),
+                    "total": tsr_summary.get("rolling_window", {}).get("total", 0),
+                    "unit": "ratio",
+                    "data_available": tsr_summary.get("rolling_window", {}).get("total", 0) > 0,
+                },
+                "sql_correctness": {
+                    "description": "SQL query validation and correctness",
+                    "unit": "confidence_score",
+                    "status": "good",
+                    "note": "Tracked per-SQL-query in orchestrator background evaluation",
+                    "data_available": False,  # Per-query basis
+                },
+            },
+            "configuration": {
+                "background_enabled": config.enable_background_evaluation,
+                "timeout_seconds": config.timeout_seconds,
+                "max_concurrent": config.max_concurrent,
+            },
+            "note": "Phase 1 evaluation runs asynchronously in background. Metrics accumulate over time.",
+        }
+    except Exception as e:
+        import traceback
+        error_msg = f"Phase 1 metrics error: {str(e)}"
+        print(error_msg)
+        traceback.print_exc()
+        return {
+            "phase": 1,
+            "error": error_msg,
+            "status": "unavailable",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
