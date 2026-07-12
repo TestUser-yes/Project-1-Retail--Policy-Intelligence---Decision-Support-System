@@ -238,7 +238,7 @@ def logout(response: Response, current_user: User = Depends(get_current_user)):
 
 
 @router.post("/ask")
-def ask(
+async def ask(
     request_data: AskRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -310,7 +310,7 @@ def ask(
 
         # 5. Process query (traces handled by @observe decorator on orchestrator.run)
         orchestrator = Orchestrator(db=db)
-        response = orchestrator.run(query)
+        response = await orchestrator.run(query)
 
         latency_seconds = time.time() - start_time
 
@@ -326,6 +326,22 @@ def ask(
                     "slo_breach",
                     f"SLO breached: {enforcement.get('enforcement_reason', 'Unknown reason')}",
                 )
+
+            # CRITICAL: Enforce SLO violations by rejecting non-compliant requests
+            if not enforcement.get("allow", True):
+                http_status = enforcement.get("http_status", 503)
+                enforcement_reason = enforcement.get("enforcement_reason", "SLO violation")
+                raise HTTPException(
+                    status_code=http_status,
+                    detail={
+                        "error": "SLO violation",
+                        "reason": enforcement_reason,
+                        "action": enforcement.get("enforcement_action", "reject"),
+                        "breach_reasons": enforcement.get("breach_reasons", []),
+                    }
+                )
+        except HTTPException:
+            raise
         except Exception as e:
             # If SLO enforcement fails, log but don't block (fail-open for availability)
             tracer = get_tracer()
@@ -389,17 +405,6 @@ def ask(
         db.add(ai_query)
         db.commit()
 
-        # 6c. TRACE SCORES TO LANGFUSE
-        from app.observability.score_tracer import ScoreTracer
-        ScoreTracer.log_query_execution(
-            query=query,
-            route=response.get("route", "unknown"),
-            confidence=response.get("confidence_score", 0.0),
-            risk_level=response.get("risk", {}).get("risk_level", "unknown"),
-            latency_ms=latency_seconds * 1000,
-            user_id=current_user.user_id,
-        )
-
         # 7. Return response with all metadata
         slo_metrics_data = response.get("slo_metrics", {
             "latency_ms": 0,
@@ -415,8 +420,8 @@ def ask(
         for agent_detail in response.get("agent_details", []):
             agent_details_models.append(AgentExecutionModel(**agent_detail))
 
-        # Return response dict (without Pydantic validation to avoid response_model issues)
-        return {
+        # Build response dict
+        response_dict = {
             "query": response["query"],
             "conversation_id": conversation.conversation_id,
             "intent": response["intent"],
@@ -448,6 +453,23 @@ def ask(
             "retrieval_agents": response.get("retrieval_agents", []),
             "retrieval_pipeline": response.get("retrieval_pipeline", {}),
         }
+
+        # 6c. TRACE SCORES TO LANGFUSE (after response is fully constructed)
+        from app.observability.score_tracer import ScoreTracer
+        try:
+            ScoreTracer.log_query_execution(
+                query=query,
+                route=response.get("route", "unknown"),
+                confidence=response.get("confidence_score", 0.0),
+                risk_level=response.get("risk", {}).get("risk_level", "unknown"),
+                latency_ms=latency_seconds * 1000,
+                user_id=current_user.user_id,
+            )
+        except Exception as e:
+            tracer = get_tracer()
+            tracer.log_error("score_tracing", f"Error logging scores: {str(e)[:100]}")
+
+        return response_dict
 
     except HTTPException:
         raise

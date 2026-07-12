@@ -221,8 +221,63 @@ export const Assistant: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* SLO Metrics Section */}
+                    {currentResponse.slo_metrics && (
+                      <>
+                        <hr className="my-3" />
+                        <small className="text-muted d-block mb-2 fw-bold">SLO Metrics</small>
+
+                        <div className="mb-2">
+                          <small className="text-muted">SLO Status</small>
+                          <div>
+                            <Badge
+                              bg={
+                                currentResponse.slo_metrics.slo_breached
+                                  ? 'danger'
+                                  : currentResponse.slo_metrics.slo_status === 'pass'
+                                    ? 'success'
+                                    : 'warning'
+                              }
+                            >
+                              {currentResponse.slo_metrics.slo_breached ? 'Breached' : 'Healthy'}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="mb-2">
+                          <small className="text-muted">Latency Target</small>
+                          <div className="small">
+                            {(currentResponse.latency_seconds * 1000).toFixed(0)}ms / {(currentResponse.slo_metrics.target_latency_ms / 1000).toFixed(2)}s
+                            <span
+                              className={currentResponse.latency_seconds * 1000 <= currentResponse.slo_metrics.target_latency_ms ? 'text-success' : 'text-warning'}
+                            >
+                              {' '}
+                              {currentResponse.latency_seconds * 1000 <= currentResponse.slo_metrics.target_latency_ms ? '✓' : '⚠'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {currentResponse.slo_metrics.enforcement_action && (
+                          <div className="mb-2">
+                            <small className="text-muted">Enforcement Action</small>
+                            <div className="small">
+                              <Badge bg="info">{currentResponse.slo_metrics.enforcement_action}</Badge>
+                            </div>
+                          </div>
+                        )}
+
+                        {currentResponse.slo_metrics.enforcement_reason && (
+                          <div className="mb-2">
+                            <small className="text-muted">Reason</small>
+                            <div className="small text-muted">{currentResponse.slo_metrics.enforcement_reason}</div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
                     {currentResponse.sources.length > 0 && (
                       <div>
+                        <hr className="my-3" />
                         <small className="text-muted d-block mb-2">Sources</small>
                         <ul className="small mb-0">
                           {currentResponse.sources.slice(0, 3).map((s, i) => (

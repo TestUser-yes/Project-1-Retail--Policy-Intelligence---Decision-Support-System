@@ -13,6 +13,7 @@ import concurrent.futures
 import statistics
 from datetime import datetime, timezone
 import json
+import asyncio
 from pathlib import Path
 
 from app.orchestrator import Orchestrator
@@ -33,7 +34,7 @@ class LoadTestRunner:
         """Execute a single query and measure latency."""
         try:
             start_time = time.time()
-            response = self.orchestrator.run(query)
+            response = asyncio.run(self.orchestrator.run(query))
             latency = time.time() - start_time
 
             return {

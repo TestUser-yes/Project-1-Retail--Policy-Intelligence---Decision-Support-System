@@ -169,10 +169,13 @@ async def guardrails_middleware(request: Request, call_next):
 
                 # Return sanitized response
                 from fastapi.responses import JSONResponse as FR
+                # Copy headers but exclude Content-Length (let Starlette recalculate it)
+                headers = dict(response.headers)
+                headers.pop("content-length", None)
                 return FR(
                     content=data,
                     status_code=response.status_code,
-                    headers=dict(response.headers)
+                    headers=headers
                 )
             except json.JSONDecodeError:
                 pass  # Non-JSON responses pass through
@@ -230,4 +233,17 @@ app.include_router(dashboard_router)
 app.include_router(observability_router)
 app.include_router(ingestion_router)
 app.include_router(websocket_router)
+
+
+# Create database tables on startup
+@app.on_event("startup")
+async def create_tables():
+    """Ensure all required database tables exist."""
+    try:
+        from app.models.base import Base
+        from app.database.session import engine
+        Base.metadata.create_all(engine)
+    except Exception as e:
+        import sys
+        print(f"[WARNING] Failed to create database tables: {str(e)}", file=sys.stderr)
 

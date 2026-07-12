@@ -27,9 +27,31 @@ interface Phase1Metrics {
   error?: string
 }
 
+interface Phase2Metrics {
+  phase: number
+  timestamp: string
+  metrics: {
+    context_precision: {
+      current: number
+      current_percent: number
+      status: string
+      data_available: boolean
+    }
+    context_recall: {
+      current: number
+      current_percent: number
+      status: string
+      data_available: boolean
+    }
+  }
+  enabled: { context_precision: boolean; context_recall: boolean }
+  error?: string
+}
+
 export const Dashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null)
   const [phase1Metrics, setPhase1Metrics] = useState<Phase1Metrics | null>(null)
+  const [phase2Metrics, setPhase2Metrics] = useState<Phase2Metrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -60,11 +82,27 @@ export const Dashboard: React.FC = () => {
       }
     }
 
+    const fetchPhase2Metrics = async () => {
+      try {
+        const response = await fetch('/api/dashboard/metrics/phase2')
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+        const result = await response.json()
+        setPhase2Metrics(result)
+      } catch (err) {
+        console.warn('Phase 2 metrics not available:', err)
+        setPhase2Metrics(null)
+      }
+    }
+
     fetchData()
     fetchPhase1Metrics()
+    fetchPhase2Metrics()
     const interval = setInterval(() => {
       fetchData()
       fetchPhase1Metrics()
+      fetchPhase2Metrics()
     }, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -117,6 +155,97 @@ export const Dashboard: React.FC = () => {
                 />
               </Col>
             </Row>
+
+            {/* SLO Status Card */}
+            {data.sloMetrics && (
+              <Row className="mb-4">
+                <Col lg={12}>
+                  <div className="card border-left-primary">
+                    <div className="card-header bg-light">
+                      <h6 className="mb-0">
+                        <i className="bi bi-speedometer2 me-2"></i>
+                        SLO Status & Compliance
+                      </h6>
+                    </div>
+                    <div className="card-body">
+                      <Row>
+                        <Col lg={3} md={6} className="mb-3">
+                          <div className="d-flex align-items-center">
+                            <div className="flex-grow-1">
+                              <small className="text-muted">Success Rate</small>
+                              <h5 className="mb-0">{data.sloMetrics.success_rate.toFixed(1)}%</h5>
+                            </div>
+                            <div className="text-end">
+                              <span
+                                className={`badge ${data.sloMetrics.success_rate >= 95 ? 'bg-success' : data.sloMetrics.success_rate >= 90 ? 'bg-warning' : 'bg-danger'}`}
+                              >
+                                {data.sloMetrics.success_rate >= 95 ? 'Healthy' : data.sloMetrics.success_rate >= 90 ? 'Warning' : 'Critical'}
+                              </span>
+                            </div>
+                          </div>
+                        </Col>
+                        <Col lg={3} md={6} className="mb-3">
+                          <div className="d-flex align-items-center">
+                            <div className="flex-grow-1">
+                              <small className="text-muted">Avg Latency</small>
+                              <h5 className="mb-0">{(data.sloMetrics.avg_latency_ms / 1000).toFixed(2)}s</h5>
+                              <small className="text-muted">Target: {(data.sloMetrics.target_latency_ms / 1000).toFixed(2)}s</small>
+                            </div>
+                            <div className="text-end">
+                              <span
+                                className={`badge ${data.sloMetrics.avg_latency_ms <= data.sloMetrics.target_latency_ms ? 'bg-success' : 'bg-warning'}`}
+                              >
+                                {data.sloMetrics.avg_latency_ms <= data.sloMetrics.target_latency_ms ? 'Met' : 'Miss'}
+                              </span>
+                            </div>
+                          </div>
+                        </Col>
+                        <Col lg={3} md={6} className="mb-3">
+                          <div className="d-flex align-items-center">
+                            <div className="flex-grow-1">
+                              <small className="text-muted">Escalations</small>
+                              <h5 className="mb-0">{data.sloMetrics.escalation_count}</h5>
+                              <small className="text-muted">Today</small>
+                            </div>
+                            <div className="text-end">
+                              <span className={`badge ${data.sloMetrics.escalation_count === 0 ? 'bg-success' : 'bg-warning'}`}>
+                                {data.sloMetrics.escalation_count === 0 ? 'None' : 'Review'}
+                              </span>
+                            </div>
+                          </div>
+                        </Col>
+                        <Col lg={3} md={6} className="mb-3">
+                          <div className="d-flex align-items-center">
+                            <div className="flex-grow-1">
+                              <small className="text-muted">Overall Status</small>
+                              <h5 className="mb-0">
+                                {data.sloMetrics.success_rate >= 95 && data.sloMetrics.avg_latency_ms <= data.sloMetrics.target_latency_ms
+                                  ? 'Healthy'
+                                  : data.sloMetrics.success_rate >= 90
+                                    ? 'Warning'
+                                    : 'Critical'}
+                              </h5>
+                            </div>
+                            <div className="text-end">
+                              <i
+                                className={`bi ${
+                                  data.sloMetrics.success_rate >= 95 && data.sloMetrics.avg_latency_ms <= data.sloMetrics.target_latency_ms
+                                    ? 'bi-check-circle text-success'
+                                    : data.sloMetrics.success_rate >= 90
+                                      ? 'bi-exclamation-triangle text-warning'
+                                      : 'bi-x-circle text-danger'
+                                }`}
+                                style={{ fontSize: '1.5rem' }}
+                              ></i>
+                            </div>
+                          </div>
+                        </Col>
+                      </Row>
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+            )}
 
             {/* Phase 1: AI Operational Metrics Section */}
             {phase1Metrics && !phase1Metrics.error && (
@@ -171,6 +300,64 @@ export const Dashboard: React.FC = () => {
                         <small className="text-muted">
                           <i className="bi bi-info-circle me-1"></i>
                           Metrics updated: {new Date(phase1Metrics.timestamp).toLocaleString()}
+                        </small>
+                      </div>
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+            )}
+
+            {/* Phase 2: Retrieval Quality Metrics Section */}
+            {phase2Metrics && !phase2Metrics.error && (
+              <Row className="mb-4">
+                <Col lg={12}>
+                  <div className="card">
+                    <div className="card-header">
+                      <h6 className="mb-0">
+                        <i className="bi bi-search me-2"></i>
+                        Retrieval Quality Metrics (Phase 2)
+                      </h6>
+                    </div>
+                    <div className="card-body">
+                      <Row>
+                        <Col lg={6} md={12} className="mb-3">
+                          <EvaluationMetricsCard
+                            title="Context Precision"
+                            value={
+                              phase2Metrics.metrics.context_precision.data_available
+                                ? `${phase2Metrics.metrics.context_precision.current_percent.toFixed(1)}%`
+                                : 'Pending'
+                            }
+                            status={
+                              phase2Metrics.metrics.context_precision.data_available
+                                ? (phase2Metrics.metrics.context_precision.status as 'good' | 'warning' | 'critical')
+                                : 'pending'
+                            }
+                            unit="relevance"
+                          />
+                        </Col>
+                        <Col lg={6} md={12} className="mb-3">
+                          <EvaluationMetricsCard
+                            title="Context Recall"
+                            value={
+                              phase2Metrics.metrics.context_recall.data_available
+                                ? `${phase2Metrics.metrics.context_recall.current_percent.toFixed(1)}%`
+                                : 'Pending'
+                            }
+                            status={
+                              phase2Metrics.metrics.context_recall.data_available
+                                ? (phase2Metrics.metrics.context_recall.status as 'good' | 'warning' | 'critical')
+                                : 'pending'
+                            }
+                            unit="completeness"
+                          />
+                        </Col>
+                      </Row>
+                      <div className="mt-2">
+                        <small className="text-muted">
+                          <i className="bi bi-info-circle me-1"></i>
+                          Metrics updated: {new Date(phase2Metrics.timestamp).toLocaleString()}
                         </small>
                       </div>
                     </div>

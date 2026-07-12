@@ -250,3 +250,292 @@ async def demo_agents_routing(current_user: User = Depends(get_current_user)):
             "step4": "View LangFuse dashboard at https://cloud.langfuse.com for full trace visualization"
         }
     }
+
+
+# Phase 3.1: SLO Metrics Endpoints
+@router.get("/slo/summary")
+async def get_slo_summary(
+    minutes: int = 60,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get current SLO compliance summary.
+
+    Args:
+        minutes: Time window in minutes (default 60)
+
+    Returns:
+        SLO compliance status with percentiles and breaches
+    """
+    from app.core.percentile_tracker import get_all_percentiles
+
+    now = datetime.utcnow()
+    cutoff = now - timedelta(minutes=minutes)
+
+    # Get percentiles from tracker
+    percentiles = get_all_percentiles(slo_target_ms=2000.0)
+
+    # Get breach count from database if available
+    try:
+        breaches = db.query(AIQuery).filter(
+            AIQuery.created_at >= cutoff,
+            AIQuery.slo_breached == True
+        ).count()
+    except Exception:
+        breaches = 0
+
+    return {
+        "window_minutes": minutes,
+        "timestamp": now.isoformat(),
+        "percentiles": percentiles.get("global", {}),
+        "recent_breaches": breaches,
+        "slo_target_ms": 2000.0,
+    }
+
+
+@router.get("/slo/metrics")
+async def get_slo_metrics(
+    period: str = "1h",
+    route: str = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get detailed SLO metrics for the period.
+
+    Args:
+        period: Time period ("1h", "24h", "7d")
+        route: Optional route filter (rag, sql, hybrid)
+
+    Returns:
+        Detailed SLO metrics
+    """
+    from app.core.percentile_tracker import get_all_percentiles
+
+    period_map = {"1h": 60, "24h": 1440, "7d": 10080}
+    minutes = period_map.get(period, 60)
+
+    # Get percentiles
+    percentiles = get_all_percentiles(slo_target_ms=2000.0)
+
+    by_route = percentiles.get("by_route", {})
+    if route and route in by_route:
+        percentiles_data = by_route[route]
+    else:
+        percentiles_data = percentiles.get("global", {})
+
+    # Calculate compliance
+    now = datetime.utcnow()
+    cutoff = now - timedelta(minutes=minutes)
+
+    try:
+        total = db.query(AIQuery).filter(AIQuery.created_at >= cutoff).count()
+        compliant = db.query(AIQuery).filter(
+            AIQuery.created_at >= cutoff,
+            AIQuery.latency <= 2000.0
+        ).count()
+        compliance_pct = (compliant / total * 100) if total > 0 else 0
+    except Exception:
+        compliance_pct = 0
+
+    return {
+        "period": period,
+        "route": route,
+        "window_minutes": minutes,
+        "percentiles": percentiles_data,
+        "compliance_pct": round(compliance_pct, 2),
+        "slo_target_ms": 2000.0,
+    }
+
+
+@router.get("/slo/by-route")
+async def get_slo_by_route(
+    minutes: int = 60,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get SLO metrics broken down by route.
+
+    Args:
+        minutes: Time window in minutes
+
+    Returns:
+        Metrics grouped by route (rag, sql, hybrid)
+    """
+    from app.core.percentile_tracker import get_all_percentiles
+
+    now = datetime.utcnow()
+    cutoff = now - timedelta(minutes=minutes)
+
+    percentiles = get_all_percentiles(slo_target_ms=2000.0)
+    by_route = percentiles.get("by_route", {})
+
+    # Add database metrics for each route
+    result = {}
+    for route in ["rag", "sql", "hybrid"]:
+        route_data = by_route.get(route, {})
+
+        try:
+            total = db.query(AIQuery).filter(
+                AIQuery.created_at >= cutoff,
+                AIQuery.route == route
+            ).count()
+            breached = db.query(AIQuery).filter(
+                AIQuery.created_at >= cutoff,
+                AIQuery.route == route,
+                AIQuery.slo_breached == True
+            ).count()
+            breach_rate = (breached / total) if total > 0 else 0
+        except Exception:
+            total = 0
+            breach_rate = 0
+
+        result[route] = {
+            **route_data,
+            "total_queries": total,
+            "breach_rate": round(breach_rate, 4),
+        }
+
+    return result
+
+
+@router.get("/slo/breaches")
+async def get_slo_breaches(
+    limit: int = 100,
+    hours: int = 24,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get recent SLO breaches.
+
+    Args:
+        limit: Maximum number to return
+        hours: Time window in hours
+
+    Returns:
+        List of recent SLO breaches
+    """
+    now = datetime.utcnow()
+    cutoff = now - timedelta(hours=hours)
+
+    try:
+        breaches = db.query(AIQuery).filter(
+            AIQuery.created_at >= cutoff,
+            AIQuery.slo_breached == True
+        ).order_by(AIQuery.created_at.desc()).limit(limit).all()
+
+        result = []
+        for b in breaches:
+            result.append({
+                "id": str(b.id),
+                "timestamp": b.created_at.isoformat() if b.created_at else None,
+                "route": b.route,
+                "latency_ms": b.latency,
+                "confidence": b.confidence_score,
+                "enforcement_action": b.enforcement_action if hasattr(b, "enforcement_action") else "unknown",
+                "breach_reason": b.enforcement_reason if hasattr(b, "enforcement_reason") else "SLO violated",
+            })
+
+        return result
+
+    except Exception as e:
+        return {"error": str(e), "breaches": []}
+
+
+# Phase 3.2: Error Budget Endpoints
+@router.get("/error-budget/status")
+async def get_error_budget_status(
+    current_user: User = Depends(get_current_user)
+):
+    """Get current error budget status.
+
+    Returns:
+        Current budget consumption, burn rate, and alerts
+    """
+    from app.core.error_budget import get_error_budget_calculator
+
+    calculator = get_error_budget_calculator()
+    return calculator.get_budget_status()
+
+
+@router.get("/error-budget/analysis")
+async def get_error_budget_analysis(
+    current_user: User = Depends(get_current_user)
+):
+    """Get detailed error budget analysis.
+
+    Returns:
+        Burn rate analysis by period and error type
+    """
+    from app.core.error_budget import get_error_budget_calculator
+
+    calculator = get_error_budget_calculator()
+    status = calculator.get_budget_status()
+    analysis = calculator.get_burn_rate_analysis()
+
+    return {
+        "status": status,
+        "analysis": analysis,
+    }
+
+
+@router.get("/error-budget/recovery")
+async def get_recovery_plan(
+    current_user: User = Depends(get_current_user)
+):
+    """Get recovery plan if budget is at risk.
+
+    Returns:
+        Recommended actions to reduce burn rate
+    """
+    from app.core.error_budget import get_error_budget_calculator
+
+    calculator = get_error_budget_calculator()
+    return calculator.get_recovery_plan()
+
+
+@router.get("/user-profile/{user_id}")
+async def get_user_slo_profile(
+    user_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get SLO profile for a specific user.
+
+    Args:
+        user_id: User identifier
+
+    Returns:
+        User's SLO thresholds and settings
+    """
+    from app.core.user_slo_profiles import get_user_slo_profile_manager
+
+    manager = get_user_slo_profile_manager()
+    return manager.get_profile_summary(user_id)
+
+
+@router.post("/error-budget/record-error")
+async def record_slo_error(
+    error_data: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Record an SLO error to the budget.
+
+    Args:
+        error_data: {
+            "error_type": "latency|error|availability",
+            "severity": "normal|high|critical",
+            "description": "error description"
+        }
+
+    Returns:
+        Updated budget status
+    """
+    from app.core.error_budget import get_error_budget_calculator
+
+    error_type = error_data.get("error_type", "error")
+    severity = error_data.get("severity", "normal")
+    description = error_data.get("description", "")
+
+    calculator = get_error_budget_calculator()
+    calculator.add_error(error_type, severity, description)
+
+    return calculator.get_budget_status()

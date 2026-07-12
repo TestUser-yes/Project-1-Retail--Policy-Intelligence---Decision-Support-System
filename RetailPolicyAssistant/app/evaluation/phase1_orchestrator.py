@@ -11,6 +11,7 @@ from app.evaluation.latency_breakdown import evaluate_latency, LatencyBreakdown
 from app.evaluation.tsr import record_query_success, evaluate_query_success
 from app.evaluation.sql_correctness import validate_sql, SQLCorrectnessResult
 from app.observability.logger import AgentLogger
+from app.core.percentile_tracker import add_latency_sample, get_all_percentiles
 
 
 @dataclass
@@ -23,6 +24,9 @@ class Phase1EvaluationResult:
     # Latency metrics
     latency: Optional[LatencyBreakdown] = None
     latency_status: str = "good"
+
+    # Percentile metrics (Phase 3.1)
+    percentiles: Optional[Dict[str, Any]] = None
 
     # TSR metric
     success: bool = False
@@ -53,6 +57,10 @@ class Phase1EvaluationResult:
         if self.latency:
             result["latency"] = self.latency.to_dict()
             result["latency_status"] = self.latency_status
+
+        # Phase 3.1: Include percentile metrics
+        if self.percentiles:
+            result["percentiles"] = self.percentiles
 
         result["success"] = self.success
         result["tsr_current"] = round(self.tsr_current, 4)
@@ -119,6 +127,10 @@ class Phase1Evaluator:
                     sql_ms=sql_ms,
                 )
                 result.latency_status = get_metric_status("latency_ms", total_latency_ms)
+
+                # Phase 3.1: Track percentiles for SLO compliance
+                add_latency_sample(total_latency_ms, route=route)
+                result.percentiles = get_all_percentiles(slo_target_ms=2000.0)
 
             # 2. Evaluate TSR (query success/failure)
             if is_metric_enabled("tsr"):

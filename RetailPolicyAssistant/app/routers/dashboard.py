@@ -6,9 +6,11 @@ from datetime import datetime, timedelta
 
 from app.database.session import get_db
 from app.models import AIQuery
+from app.models.evaluation import Phase2Run, Phase2Result
 from app.core.auth import get_current_user, User
 from app.evaluation.tsr import get_tsr_calculator
 from app.evaluation.config import get_evaluation_config
+from app.evaluation.retrieval_metrics import get_retrieval_metrics_calculator
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -93,6 +95,45 @@ async def get_dashboard_data(db: Session = Depends(get_db), current_user: User =
             print(f"[WARNING] Hourly trends query failed: {e}")
             hourly_trends = []
 
+        # ===== PHASE 2: RETRIEVAL QUALITY METRICS =====
+        # Query Phase 2 aggregates from database
+        retrieval_metrics = {
+            "contextPrecision": {
+                "current": 0.0,
+                "trend": "stable",
+                "status": "good",
+                "lastUpdated": None
+            },
+            "contextRecall": {
+                "current": 0.0,
+                "trend": "stable",
+                "status": "good",
+                "lastUpdated": None
+            }
+        }
+
+        try:
+            # Get latest Phase 2 run
+            latest_phase2_run = db.query(Phase2Run).order_by(Phase2Run.run_time.desc()).first()
+            if latest_phase2_run:
+                retrieval_metrics["contextPrecision"]["current"] = round(latest_phase2_run.avg_context_precision, 4)
+                retrieval_metrics["contextRecall"]["current"] = round(latest_phase2_run.avg_context_recall, 4)
+                retrieval_metrics["contextPrecision"]["lastUpdated"] = latest_phase2_run.run_time.isoformat()
+                retrieval_metrics["contextRecall"]["lastUpdated"] = latest_phase2_run.run_time.isoformat()
+
+                # Determine status based on thresholds
+                from app.evaluation.config import get_metric_status
+                retrieval_metrics["contextPrecision"]["status"] = get_metric_status(
+                    "context_precision",
+                    latest_phase2_run.avg_context_precision
+                )
+                retrieval_metrics["contextRecall"]["status"] = get_metric_status(
+                    "context_recall",
+                    latest_phase2_run.avg_context_recall
+                )
+        except Exception as e:
+            print(f"[WARNING] Phase 2 metrics query failed: {e}")
+
         return {
             "totalQueries": total_queries,
             "avgLatency": round(avg_latency_ms / 1000.0, 2),
@@ -126,7 +167,8 @@ async def get_dashboard_data(db: Session = Depends(get_db), current_user: User =
                 "avg_latency_ms": avg_latency_ms,
                 "target_latency_ms": 2000.0,
                 "escalation_count": escalated_queries,
-            }
+            },
+            "retrievalMetrics": retrieval_metrics
         }
     except Exception as e:
         import traceback
@@ -199,8 +241,8 @@ async def get_phase1_metrics(
             },
             "configuration": {
                 "background_enabled": config.enable_background_evaluation,
-                "timeout_seconds": config.timeout_seconds,
-                "max_concurrent": config.max_concurrent,
+                "timeout_seconds": config.evaluation_timeout_seconds,
+                "max_concurrent": config.max_concurrent_evaluations,
             },
             "note": "Phase 1 evaluation runs asynchronously in background. Metrics accumulate over time.",
         }
@@ -211,6 +253,98 @@ async def get_phase1_metrics(
         traceback.print_exc()
         return {
             "phase": 1,
+            "error": error_msg,
+            "status": "unavailable",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+
+@router.get("/metrics/phase2")
+async def get_phase2_metrics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get Phase 2 retrieval quality metrics for AI Operational Dashboard.
+
+    Returns aggregated metrics for Context Precision and Context Recall.
+    These metrics measure the quality of document retrieval in the RAG pipeline.
+
+    Phase 2 Metrics:
+    - Context Precision: Relevance of retrieved documents to the query
+    - Context Recall: Completeness of retrieval - did we get all relevant info?
+    """
+    try:
+        config = get_evaluation_config()
+        calc = get_retrieval_metrics_calculator()
+
+        # Get rolling window stats
+        rolling_stats = calc.get_rolling_stats()
+        global_stats = calc.get_global_stats()
+
+        # Get precision and recall from rolling window
+        precision_current = rolling_stats.get("precision", {}).get("avg", 0.0)
+        recall_current = rolling_stats.get("recall", {}).get("avg", 0.0)
+
+        # Determine status
+        from app.evaluation.config import get_metric_status
+        precision_status = get_metric_status("context_precision", precision_current)
+        recall_status = get_metric_status("context_recall", recall_current)
+
+        # Try to get latest run from database for more detail
+        latest_run = db.query(Phase2Run).order_by(Phase2Run.run_time.desc()).first()
+        last_updated = latest_run.run_time.isoformat() if latest_run else None
+
+        return {
+            "phase": 2,
+            "timestamp": datetime.utcnow().isoformat(),
+            "enabled": {
+                "context_precision": config.enable_context_precision,
+                "context_recall": config.enable_context_recall,
+            },
+            "metrics": {
+                "context_precision": {
+                    "description": "Relevance of retrieved documents",
+                    "current": round(precision_current, 4),
+                    "current_percent": round(precision_current * 100, 2),
+                    "status": precision_status,
+                    "min": round(rolling_stats.get("precision", {}).get("min", 0.0), 4),
+                    "max": round(rolling_stats.get("precision", {}).get("max", 0.0), 4),
+                    "median": round(rolling_stats.get("precision", {}).get("median", 0.0), 4),
+                    "unit": "ratio",
+                    "data_available": rolling_stats.get("count", 0) > 0,
+                },
+                "context_recall": {
+                    "description": "Completeness of document retrieval",
+                    "current": round(recall_current, 4),
+                    "current_percent": round(recall_current * 100, 2),
+                    "status": recall_status,
+                    "min": round(rolling_stats.get("recall", {}).get("min", 0.0), 4),
+                    "max": round(rolling_stats.get("recall", {}).get("max", 0.0), 4),
+                    "median": round(rolling_stats.get("recall", {}).get("median", 0.0), 4),
+                    "unit": "ratio",
+                    "data_available": rolling_stats.get("count", 0) > 0,
+                },
+            },
+            "statistics": {
+                "total_evaluations": global_stats.get("total_evals", 0),
+                "rolling_window_count": rolling_stats.get("count", 0),
+                "global_avg_precision": round(global_stats.get("avg_precision", 0.0), 4),
+                "global_avg_recall": round(global_stats.get("avg_recall", 0.0), 4),
+                "last_updated": last_updated,
+            },
+            "configuration": {
+                "background_enabled": config.enable_background_evaluation,
+                "timeout_seconds": config.evaluation_timeout_seconds,
+            },
+            "note": "Phase 2 evaluation runs asynchronously for RAG/Hybrid queries. Metrics accumulate over time.",
+        }
+    except Exception as e:
+        import traceback
+        error_msg = f"Phase 2 metrics error: {str(e)}"
+        print(error_msg)
+        traceback.print_exc()
+        return {
+            "phase": 2,
             "error": error_msg,
             "status": "unavailable",
             "timestamp": datetime.utcnow().isoformat(),

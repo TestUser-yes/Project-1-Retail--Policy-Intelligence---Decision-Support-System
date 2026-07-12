@@ -11,6 +11,7 @@ from app.config import get_config
 from app.utils.tokenizer import count_query_response_tokens
 from app.middleware.guardrails_middleware import get_guardrails_middleware
 from app.evaluation.phase1_orchestrator import evaluate_phase1
+from app.evaluation.phase2_orchestrator import evaluate_phase2
 
 
 class Orchestrator:
@@ -32,7 +33,7 @@ class Orchestrator:
         self.routing_config = self.config.routing
 
     @trace_function("ask_query", as_type="chain")
-    def run(self, query: str, user_role: str = "viewer"):
+    async def run(self, query: str, user_role: str = "viewer"):
         """Process query and return demo response."""
         import sys
         print("[ORCHESTRATOR.RUN] Starting...", file=sys.stderr)
@@ -257,16 +258,33 @@ class Orchestrator:
 
             # ===== PHASE 1: EVALUATION (Optional, Async) =====
             # Evaluate response using Phase 1 metrics
-            # Runs in background if enabled - does not block user response
             try:
-                asyncio.create_task(evaluate_phase1(
+                await evaluate_phase1(
                     response=response,
                     query=query,
                     route=route,
                     total_latency_ms=latency * 1000,
-                ))
+                )
             except Exception as e:
                 self.logger.log("phase1_evaluation_schedule_error", {"error": str(e)})
+
+            # ===== PHASE 2: RETRIEVAL QUALITY EVALUATION (Optional, Async) =====
+            # Evaluate retrieval quality using Phase 2 metrics
+            # Only for RAG/Hybrid routes
+            if route in ("rag", "hybrid"):
+                try:
+                    retrieved_chunks = response.get("sources", [])
+                    retrieval_method = response.get("retrieval_method", "unknown")
+                    await evaluate_phase2(
+                        response=response,
+                        query=query,
+                        route=route,
+                        retrieved_chunks=retrieved_chunks,
+                        retrieval_latency_ms=latency * 1000,
+                        retrieval_method=retrieval_method,
+                    )
+                except Exception as e:
+                    self.logger.log("phase2_evaluation_schedule_error", {"error": str(e)})
 
             return response
 
@@ -300,12 +318,12 @@ class Orchestrator:
 
             # Still evaluate even on error (for completeness)
             try:
-                asyncio.create_task(evaluate_phase1(
+                await evaluate_phase1(
                     response=error_response,
                     query=query,
                     route="rag",
                     total_latency_ms=latency * 1000,
-                ))
+                )
             except Exception as e:
                 self.logger.log("phase1_evaluation_schedule_error", {"error": str(e)})
 

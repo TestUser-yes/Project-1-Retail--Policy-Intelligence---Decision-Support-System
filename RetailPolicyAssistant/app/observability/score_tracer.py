@@ -22,9 +22,20 @@ class ScoreTracer:
             metadata: Additional metadata to attach to the score
         """
         try:
+            # Validate score value
+            if not (0.0 <= score_value <= 1.0):
+                print(f"[WARNING] Invalid score value: {score_value}, must be 0.0-1.0, skipping Langfuse logging")
+                return
+
             # Create metadata payload
             meta_dict = metadata or {}
-            meta_str = json.dumps(meta_dict) if meta_dict else "{}"
+
+            # Validate metadata is JSON-serializable
+            try:
+                meta_str = json.dumps(meta_dict) if meta_dict else "{}"
+            except (TypeError, ValueError) as e:
+                print(f"[WARNING] Metadata not JSON-serializable: {e}, skipping Langfuse logging")
+                return
 
             # Log to console for visibility
             print(f"[LANGFUSE SCORE] name={score_name} value={score_value:.2f} metadata={meta_str}")
@@ -45,6 +56,11 @@ class ScoreTracer:
                 except (ImportError, AttributeError):
                     # Langfuse version doesn't have context module
                     pass
+
+                # Skip if no trace context available
+                if not trace_id:
+                    print(f"[INFO] No trace context available, logging to console only")
+                    return
 
                 # Log score to Langfuse using create_score() method
                 try:
@@ -156,5 +172,52 @@ class ScoreTracer:
                 "latency_ms": round(latency_ms, 2),
                 "user_id": user_id,
                 "query_preview": query[:100] if query else "",
+            }
+        )
+
+    @staticmethod
+    def log_retrieval_metrics(
+        context_precision: float,
+        context_recall: float,
+        query_id: Optional[str] = None,
+        doc_count: int = 0,
+        retrieval_latency_ms: float = 0.0,
+        retrieval_method: str = "unknown",
+        route: str = "rag"
+    ):
+        """Log Phase 2 retrieval quality metrics to Langfuse.
+
+        Args:
+            context_precision: Context precision score (0.0-1.0)
+            context_recall: Context recall score (0.0-1.0)
+            query_id: Optional query ID for correlation
+            doc_count: Number of documents retrieved
+            retrieval_latency_ms: Retrieval time in milliseconds
+            retrieval_method: Method used (semantic, keyword, multi_agent)
+            route: Query route (rag, sql, hybrid)
+        """
+        # Log precision score
+        ScoreTracer.log_score(
+            score_name="context_precision",
+            score_value=context_precision,
+            metadata={
+                "query_id": query_id,
+                "doc_count": doc_count,
+                "retrieval_method": retrieval_method,
+                "route": route,
+                "retrieval_latency_ms": round(retrieval_latency_ms, 2),
+            }
+        )
+
+        # Log recall score
+        ScoreTracer.log_score(
+            score_name="context_recall",
+            score_value=context_recall,
+            metadata={
+                "query_id": query_id,
+                "doc_count": doc_count,
+                "retrieval_method": retrieval_method,
+                "route": route,
+                "retrieval_latency_ms": round(retrieval_latency_ms, 2),
             }
         )
