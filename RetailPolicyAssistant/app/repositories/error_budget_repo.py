@@ -230,6 +230,151 @@ class ErrorBudgetRepository:
 
         return [dict(row) for row in rows]
 
+    async def get_budget_window_with_carryover(
+        self,
+        month: str,
+        tenant_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Get budget window with all carryover fields.
+
+        Args:
+            month: Month in "2026-07" format
+            tenant_id: Optional tenant ID
+
+        Returns:
+            Budget window with carryover data
+        """
+        async with self.db_pool.acquire() as conn:
+            result = await conn.fetchrow("""
+                SELECT *,
+                    (total_budget_percent + carried_over_from_previous + recovery_credits)
+                    as calculated_effective_budget
+                FROM error_budget_windows
+                WHERE month = $1 AND tenant_id IS NOT DISTINCT FROM $2;
+            """, month, tenant_id)
+
+        return dict(result) if result else {}
+
+    async def lock_window_for_carryover(self, window_id: UUID) -> bool:
+        """Lock window to prevent further carryover modifications.
+
+        Args:
+            window_id: ID of budget window
+
+        Returns:
+            True if successful
+        """
+        async with self.db_pool.acquire() as conn:
+            result = await conn.execute("""
+                UPDATE error_budget_windows
+                SET is_carryover_locked = TRUE,
+                    carryover_applied_at = CURRENT_TIMESTAMP
+                WHERE id = $1;
+            """, window_id)
+
+        return result == "UPDATE 1"
+
+    async def record_carryover_event(
+        self,
+        source_window_id: UUID,
+        target_window_id: UUID,
+        carried_amount: float,
+        carryover_type: str,
+        applied_by: str = "system",
+    ) -> Dict[str, Any]:
+        """Record carryover event for audit trail.
+
+        Args:
+            source_window_id: Source window ID
+            target_window_id: Target window ID
+            carried_amount: Amount carried
+            carryover_type: Type of carryover ('normal', 'recovery_credit', 'year_rollover')
+            applied_by: Who applied the carryover
+
+        Returns:
+            Audit event record
+        """
+        async with self.db_pool.acquire() as conn:
+            result = await conn.fetchrow("""
+                INSERT INTO budget_carryover_events
+                    (source_window_id, target_window_id, carried_amount, carryover_type, applied_by)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id, applied_at;
+            """, source_window_id, target_window_id, carried_amount, carryover_type, applied_by)
+
+        return dict(result) if result else {}
+
+    async def get_carryover_events_for_window(
+        self,
+        window_id: UUID,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """Get carryover events for a window.
+
+        Args:
+            window_id: Window ID (as source or target)
+            limit: Maximum events to retrieve
+
+        Returns:
+            List of carryover events
+        """
+        async with self.db_pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT * FROM budget_carryover_events
+                WHERE source_window_id = $1 OR target_window_id = $1
+                ORDER BY applied_at DESC
+                LIMIT $2;
+            """, window_id, limit)
+
+        return [dict(row) for row in rows]
+
+    async def update_carryover_fields(
+        self,
+        window_id: UUID,
+        carried_from_previous: Optional[float] = None,
+        carried_to_next: Optional[float] = None,
+        recovery_credits: Optional[float] = None,
+    ) -> bool:
+        """Update carryover fields on a window.
+
+        Args:
+            window_id: Window ID
+            carried_from_previous: Amount carried from previous (optional)
+            carried_to_next: Amount being carried to next (optional)
+            recovery_credits: Recovery credits (optional)
+
+        Returns:
+            True if successful
+        """
+        updates = []
+        params = [window_id]
+
+        if carried_from_previous is not None:
+            updates.append(f"carried_over_from_previous = ${len(params) + 1}")
+            params.append(carried_from_previous)
+
+        if carried_to_next is not None:
+            updates.append(f"carried_over_to_next = ${len(params) + 1}")
+            params.append(carried_to_next)
+
+        if recovery_credits is not None:
+            updates.append(f"recovery_credits = ${len(params) + 1}")
+            params.append(recovery_credits)
+
+        if not updates:
+            return True  # Nothing to update
+
+        update_clause = ", ".join(updates)
+
+        async with self.db_pool.acquire() as conn:
+            result = await conn.execute(f"""
+                UPDATE error_budget_windows
+                SET {update_clause}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = $1;
+            """, *params)
+
+        return result == "UPDATE 1"
+
 
 class UserProfileRepository:
     """Manages user SLO profile storage."""
