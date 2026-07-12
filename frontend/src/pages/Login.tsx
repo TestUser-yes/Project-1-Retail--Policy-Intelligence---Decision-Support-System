@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Container, Form, Button, Card, Alert } from 'react-bootstrap'
+import { Form, Button, Card, Alert } from 'react-bootstrap'
 import { useAuth } from '@/context/AuthContext'
 
 export const Login: React.FC = () => {
@@ -35,7 +35,7 @@ export const Login: React.FC = () => {
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       }}
     >
-      <Container maxWidth="sm">
+      <div style={{ width: '100%', maxWidth: '400px', padding: '20px' }}>
         <Card className="shadow-lg">
           <Card.Body className="p-5">
             <div className="text-center mb-4">
@@ -78,7 +78,7 @@ export const Login: React.FC = () => {
             </div>
           </Card.Body>
         </Card>
-      </Container>
+      </div>
     </div>
   )
 }

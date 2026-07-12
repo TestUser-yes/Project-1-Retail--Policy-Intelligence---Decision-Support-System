@@ -100,30 +100,52 @@ export interface ConversationHistory {
   messages: ConversationMessage[]
 }
 
-// Dashboard types
+// Dashboard types - matches backend response schema
 export interface DashboardData {
-  total_queries: number
-  total_documents: number
-  total_vendors: number
-  average_confidence: number
-  total_cost_usd: number
-  slo_violations: number
-  active_conversations: number
-  system_health: 'healthy' | 'degraded' | 'unhealthy'
-  recent_queries: Array<{
+  totalQueries: number
+  avgLatency: number
+  escalationRate: number
+  budgetUsed: number
+  budgetUsdLimit: number
+  budgetUsdUsed: number
+  budgetRemaining: number
+  activeUsers: number
+  successRate: number
+  queryByRoute: {
+    rag: number
+    sql: number
+    hybrid: number
+  }
+  queryByRisk: {
+    low: number
+    medium: number
+    high: number
+  }
+  topPolicies: Array<{ name: string; count: number }>
+  topIntents: Array<{ name: string; count: number }>
+  recentQueries: Array<{
+    id: string
     query: string
-    confidence: number
-    cost_usd: number
+    route: string
+    risk: string
+    cost: number
+    latency: number
     timestamp: string
   }>
-  documents_stats: {
+  hourlyTrends: Array<{
+    time: string
+    queries: number
+    latency: number
+  }>
+  vendorStats: {
     total: number
-    processed: number
-    indexed: number
+    high_risk: number
   }
-  vendors_stats: {
-    total: number
-    active: number
+  sloMetrics: {
+    success_rate: number
+    avg_latency_ms: number
+    target_latency_ms: number
+    escalation_count: number
   }
 }
 
@@ -137,9 +159,11 @@ export interface Document {
 
 export interface IngestionResponse {
   filename: string
-  size: number
-  chunks: number
-  message: string
+  document_name: string
+  chunks_created: number
+  total_pages: number
+  status: string
+  timestamp: string
 }
 
 export interface DocumentList {
@@ -153,18 +177,55 @@ export interface ApiError {
   status?: number
 }
 
-// Observability types
+// Observability types - matches backend response schema
 export interface ObservabilityData {
-  langfuse_status: string
-  langfuse_token_usage: {
-    input_tokens: number
-    output_tokens: number
-    total_tokens: number
+  timestamp: string
+  summary: {
+    total_queries: number
+    queries_24h: number
+    avg_confidence: number
+    escalation_rate: number
+    slo_compliance_rate: number
   }
-  demo_agents: string[]
-  system_info: {
-    uptime_seconds: number
-    active_connections: number
-    database_queries: number
+  risk_distribution: {
+    high: number
+    medium: number
+    low: number
+  }
+  route_distribution: {
+    rag: number
+    sql: number
+    hybrid: number
+  }
+  slo_metrics: {
+    success_rate: number
+    avg_latency_ms: number
+    target_latency_ms: number
+    slo_status: 'pass' | 'fail'
+  }
+  hourly_trends: Array<{
+    time: string
+    queries: number
+    slo_target_ms: number
+    avg_latency_ms: number
+  }>
+  recent_queries: Array<{
+    id: string
+    query: string
+    route: string
+    risk: string
+    latency_ms: number
+    timestamp: string
+  }>
+  langfuse_traces: any[]
+  multi_agent_summary: {
+    rag_agent_calls: number
+    sql_agent_calls: number
+    hybrid_agent_calls: number
+    total_agent_calls: number
+    agent_routing_efficiency: {
+      single_agent_percentage: number
+      hybrid_percentage: number
+    }
   }
 }

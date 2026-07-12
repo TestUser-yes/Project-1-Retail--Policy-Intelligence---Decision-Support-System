@@ -48,31 +48,31 @@ export const Dashboard: React.FC = () => {
               <Col lg={3} md={6} className="mb-3">
                 <KPICard
                   title="Total Queries"
-                  value={data.total_queries}
+                  value={data.totalQueries}
                   icon="bi-chat-dots"
                   variant="primary"
                 />
               </Col>
               <Col lg={3} md={6} className="mb-3">
                 <KPICard
-                  title="Documents Indexed"
-                  value={data.total_documents}
-                  icon="bi-file-earmark"
+                  title="Success Rate"
+                  value={`${data.successRate.toFixed(1)}%`}
+                  icon="bi-check-circle"
                   variant="success"
                 />
               </Col>
               <Col lg={3} md={6} className="mb-3">
                 <KPICard
-                  title="Avg. Confidence"
-                  value={`${(data.average_confidence * 100).toFixed(1)}%`}
-                  icon="bi-percent"
+                  title="Avg. Latency"
+                  value={`${data.avgLatency.toFixed(2)}s`}
+                  icon="bi-hourglass"
                   variant="info"
                 />
               </Col>
               <Col lg={3} md={6} className="mb-3">
                 <KPICard
-                  title="Total Cost"
-                  value={`$${data.total_cost_usd.toFixed(2)}`}
+                  title="Budget Used"
+                  value={`$${data.budgetUsdUsed.toFixed(2)}`}
                   icon="bi-currency-dollar"
                   variant="warning"
                 />
@@ -86,26 +86,22 @@ export const Dashboard: React.FC = () => {
                     <h6 className="mb-0">Recent Queries</h6>
                   </div>
                   <div className="card-body">
-                    {data.recent_queries.length > 0 ? (
+                    {data.recentQueries.length > 0 ? (
                       <Table striped hover size="sm">
                         <thead>
                           <tr>
                             <th>Query</th>
-                            <th>Confidence</th>
-                            <th>Cost</th>
+                            <th>Route</th>
+                            <th>Latency</th>
                             <th>Time</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {data.recent_queries.map((q, i) => (
-                            <tr key={i}>
+                          {data.recentQueries.map((q) => (
+                            <tr key={q.id}>
                               <td className="text-truncate">{q.query}</td>
-                              <td>
-                                <span className="badge bg-info">
-                                  {(q.confidence * 100).toFixed(0)}%
-                                </span>
-                              </td>
-                              <td>${q.cost_usd.toFixed(4)}</td>
+                              <td><span className="badge bg-secondary">{q.route}</span></td>
+                              <td>{q.latency.toFixed(2)}s</td>
                               <td className="text-muted small">
                                 {new Date(q.timestamp).toLocaleDateString()}
                               </td>
@@ -123,45 +119,41 @@ export const Dashboard: React.FC = () => {
               <Col lg={4}>
                 <div className="card">
                   <div className="card-header">
-                    <h6 className="mb-0">System Status</h6>
+                    <h6 className="mb-0">Query Statistics</h6>
                   </div>
                   <div className="card-body">
                     <div className="mb-3">
-                      <small className="text-muted">System Health</small>
-                      <div className="d-flex align-items-center">
-                        <span
-                          className={`badge bg-${
-                            data.system_health === 'healthy' ? 'success' : 'warning'
-                          } me-2`}
-                        >
-                          {data.system_health}
-                        </span>
+                      <small className="text-muted">By Route</small>
+                      <div className="d-flex gap-2 flex-wrap">
+                        <span className="badge bg-primary">RAG: {data.queryByRoute.rag}</span>
+                        <span className="badge bg-success">SQL: {data.queryByRoute.sql}</span>
+                        <span className="badge bg-warning">Hybrid: {data.queryByRoute.hybrid}</span>
                       </div>
                     </div>
 
                     <div className="mb-3">
-                      <small className="text-muted">Active Conversations</small>
-                      <div className="h5 mb-0">{data.active_conversations}</div>
+                      <small className="text-muted">By Risk Level</small>
+                      <div className="d-flex gap-2 flex-wrap">
+                        <span className="badge bg-danger">High: {data.queryByRisk.high}</span>
+                        <span className="badge bg-warning">Med: {data.queryByRisk.medium}</span>
+                        <span className="badge bg-info">Low: {data.queryByRisk.low}</span>
+                      </div>
                     </div>
 
                     <div className="mb-3">
-                      <small className="text-muted">Documents</small>
-                      <div className="progress" style={{ height: '20px' }}>
-                        <div
-                          className="progress-bar"
-                          style={{
-                            width: `${(data.documents_stats.processed / data.documents_stats.total) * 100}%`,
-                          }}
-                        >
-                          {data.documents_stats.indexed}/{data.documents_stats.total}
-                        </div>
+                      <small className="text-muted">SLO Metrics</small>
+                      <div className="h6 mb-1">
+                        Success Rate: <span className="badge bg-success">{data.sloMetrics.success_rate.toFixed(1)}%</span>
+                      </div>
+                      <div className="small text-muted">
+                        Avg Latency: {(data.sloMetrics.avg_latency_ms / 1000).toFixed(2)}s / {(data.sloMetrics.target_latency_ms / 1000).toFixed(2)}s target
                       </div>
                     </div>
 
                     <div>
                       <small className="text-muted">Vendors</small>
-                      <div className="h5 mb-0">{data.vendors_stats.active}</div>
-                      <small className="text-muted">out of {data.vendors_stats.total}</small>
+                      <div className="h5 mb-0">{data.vendorStats.total}</div>
+                      <small className="text-danger">{data.vendorStats.high_risk} high-risk</small>
                     </div>
                   </div>
                 </div>

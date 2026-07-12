@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Container, Form, Button, Row, Col, Badge } from 'react-bootstrap'
 import { Layout } from '@/components/Layout'
-import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { queryApi } from '@/api/query'
 import { AskResponse, ConversationMessage } from '@/types'
@@ -12,7 +11,7 @@ export const Assistant: React.FC = () => {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [conversationId, setConversationId] = useState(
+  const [conversationId] = useState(
     `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   )
   const [currentResponse, setCurrentResponse] = useState<AskResponse | null>(null)

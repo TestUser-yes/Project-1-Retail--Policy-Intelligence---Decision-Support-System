@@ -47,7 +47,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <Nav.Link
               href="#"
               className="text-white py-2 rounded"
-              onClick={() => setOpen(!sidebarOpen)}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               <i className="bi bi-chevron-left me-2"></i>
               {sidebarOpen ? 'Hide' : 'Show'}

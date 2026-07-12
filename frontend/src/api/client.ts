@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios'
 import { ApiError } from '@/types'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
+const API_BASE_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:8001'
 
 class ApiClient {
   private client: AxiosInstance

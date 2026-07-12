@@ -18,14 +18,6 @@ export const KPICard: React.FC<KPICardProps> = ({
   variant = 'primary',
   trend,
 }) => {
-  const bgColor = {
-    primary: '#e7f1ff',
-    success: '#e8f5e9',
-    danger: '#ffebee',
-    warning: '#fff3e0',
-    info: '#e0f7fa',
-  }[variant]
-
   const borderColor = {
     primary: '#0d6efd',
     success: '#198754',
