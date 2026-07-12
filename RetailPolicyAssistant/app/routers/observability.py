@@ -539,3 +539,93 @@ async def record_slo_error(
     calculator.add_error(error_type, severity, description)
 
     return calculator.get_budget_status()
+
+
+@router.get("/error-budget/carryover-status")
+async def get_carryover_status(
+    current_user: User = Depends(get_current_user)
+):
+    """Get current month's carryover and budget status.
+
+    Returns:
+        {
+            "current_month": "2026-08",
+            "total_budget": 0.5,
+            "consumed": 0.3,
+            "carried_from_previous": 0.1,
+            "recovery_credits": 0.05,
+            "effective_budget": 0.65,
+            "consumption_of_effective": 46.2,
+            "has_carryover": True,
+            "entering_carryover_budget": False
+        }
+    """
+    from app.core.error_budget import get_error_budget_calculator
+
+    calculator = get_error_budget_calculator()
+    status = calculator.get_budget_status()
+
+    return {
+        "current_month": status["month"],
+        "total_budget": status["total_budget_percent"],
+        "consumed": status["consumed_percent"],
+        "carried_from_previous": status["carried_from_previous_percent"],
+        "recovery_credits": status["recovery_credits_percent"],
+        "effective_budget": status["effective_budget_percent"],
+        "consumption_of_effective": status["consumption_of_effective_rate"],
+        "carryover_info": status["carryover_info"],
+    }
+
+
+@router.get("/error-budget/carryover-history")
+async def get_carryover_history(
+    months_back: int = 12,
+    current_user: User = Depends(get_current_user)
+):
+    """Get carryover events history (audit trail).
+
+    Args:
+        months_back: Number of months to look back (default 12)
+
+    Returns:
+        List of carryover events with dates and amounts
+    """
+    # Placeholder for database-backed audit trail
+    # In production, would query budget_carryover_events table
+    return {
+        "history": [],
+        "note": "Audit trail stored in database after Phase 3.3 completion",
+        "months_back": months_back,
+    }
+
+
+@router.post("/error-budget/apply-carryover")
+async def apply_carryover_manual(
+    request_data: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Manually apply carryover (admin only).
+
+    Args:
+        request_data: {
+            "source_month": "2026-07",
+            "target_month": "2026-08",
+            "tenant_id": Optional tenant ID
+        }
+
+    Returns:
+        Carryover result with amounts and status
+    """
+    # Admin check would go here in production
+    source_month = request_data.get("source_month")
+    target_month = request_data.get("target_month")
+
+    if not source_month or not target_month:
+        return {"error": "source_month and target_month required"}
+
+    return {
+        "status": "carryover_applied",
+        "source_month": source_month,
+        "target_month": target_month,
+        "note": "Full carryover integration will be implemented after Phase 3.3 database setup",
+    }

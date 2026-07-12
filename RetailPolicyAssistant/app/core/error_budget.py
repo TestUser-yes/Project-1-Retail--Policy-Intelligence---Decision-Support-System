@@ -2,12 +2,14 @@
 
 Tracks monthly error budget, calculates burn rate, and provides alerts.
 Used by Phase 3.2 for advanced SLO management.
+Supports budget carryover from Phase 3.3.
 """
 
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 import math
+from app.core.budget_carryover import get_carryover_manager
 
 
 @dataclass
@@ -50,6 +52,9 @@ class BudgetWindow:
     errors: list = field(default_factory=list)
     start_date: datetime = field(default_factory=lambda: datetime.utcnow().replace(day=1))
     end_date: datetime = field(init=False)
+    # Carryover fields
+    carried_over_from_previous: float = 0.0
+    recovery_credits: float = 0.0
 
     def __post_init__(self):
         """Initialize window dates."""
@@ -58,6 +63,23 @@ class BudgetWindow:
             self.end_date = self.start_date.replace(year=self.start_date.year + 1, month=1, day=1) - timedelta(days=1)
         else:
             self.end_date = self.start_date.replace(month=self.start_date.month + 1, day=1) - timedelta(days=1)
+
+    def get_effective_budget(self) -> float:
+        """Get total effective budget including carryover and recovery credits.
+
+        Returns:
+            Effective budget percent
+        """
+        return self.total_budget_percent + self.carried_over_from_previous + self.recovery_credits
+
+    def get_remaining_effective(self) -> float:
+        """Get remaining effective budget.
+
+        Returns:
+            Remaining effective budget percent
+        """
+        effective = self.get_effective_budget()
+        return max(0.0, effective - self.consumed_percent)
 
         # SLO 99.5% = 0.5% error budget
         self.total_budget_percent = 100.0 - 99.5
@@ -133,24 +155,34 @@ class ErrorBudgetCalculator:
         window.add_error(error)
 
     def get_budget_status(self) -> Dict[str, Any]:
-        """Get current budget status.
+        """Get current budget status including carryover information.
 
         Returns:
             {
                 "month": "2026-07",
                 "total_budget_percent": 0.5,
+                "carried_from_previous_percent": 0.2,
+                "recovery_credits_percent": 0.1,
+                "effective_budget_percent": 0.8,
                 "consumed_percent": 0.35,
                 "remaining_percent": 0.15,
-                "consumption_rate": 0.35,  # % of budget consumed
+                "remaining_effective_percent": 0.45,
+                "consumption_rate": 35.0,  # % of base budget
+                "consumption_of_effective_rate": 43.75,  # % of effective budget
                 "days_in_month": 31,
                 "days_elapsed": 12,
-                "expected_daily_burn": 0.016,  # 0.5% / 30 days
+                "expected_daily_burn": 0.016,  # base / 30 days
                 "actual_daily_burn": 0.029,  # consumed / days_elapsed
                 "burn_rate_multiplier": 1.8,  # actual / expected
                 "exhaustion_date": "2026-07-25",  # Predicted date
                 "status": "warning",  # ok, warning, critical, exhausted
                 "alert": False,
                 "alert_reason": "",
+                "carryover_info": {
+                    "has_carryover": True,
+                    "has_recovery_credits": True,
+                    "entering_carryover_budget": False,
+                }
             }
         """
         window = self.get_current_window()
@@ -160,25 +192,33 @@ class ErrorBudgetCalculator:
         days_elapsed = (now - window.start_date).days + 1
         days_remaining = days_in_month - days_elapsed
 
+        # Calculate effective budget (includes carryover and recovery credits)
+        effective_budget = window.get_effective_budget()
+        remaining_effective = window.get_remaining_effective()
+
         expected_daily_burn = window.total_budget_percent / days_in_month
         actual_daily_burn = window.consumed_percent / days_elapsed if days_elapsed > 0 else 0
         burn_rate = actual_daily_burn / expected_daily_burn if expected_daily_burn > 0 else 0
 
-        # Predict exhaustion date
+        # Predict exhaustion date using effective budget
         if actual_daily_burn > 0:
-            days_to_exhaustion = window.remaining_percent() / actual_daily_burn
+            days_to_exhaustion = remaining_effective / actual_daily_burn
             exhaustion_date = now + timedelta(days=days_to_exhaustion)
         else:
             exhaustion_date = window.end_date
 
-        # Determine status
-        consumption_rate = window.consumed_percent / window.total_budget_percent * 100 if window.total_budget_percent > 0 else 0
+        # Determine status based on effective budget
+        consumption_rate_base = window.consumed_percent / window.total_budget_percent * 100 if window.total_budget_percent > 0 else 0
+        consumption_rate_effective = window.consumed_percent / effective_budget * 100 if effective_budget > 0 else 0
 
-        if window.is_exhausted():
+        is_exhausted_effective = window.consumed_percent >= effective_budget
+        entering_carryover = window.consumed_percent > window.total_budget_percent
+
+        if is_exhausted_effective:
             status = "exhausted"
-        elif consumption_rate >= self.config.critical_threshold_percent:
+        elif consumption_rate_effective >= self.config.critical_threshold_percent:
             status = "critical"
-        elif consumption_rate >= self.config.alert_threshold_percent:
+        elif consumption_rate_effective >= self.config.alert_threshold_percent:
             status = "warning"
         else:
             status = "ok"
@@ -190,16 +230,35 @@ class ErrorBudgetCalculator:
             alert = True
             alert_reason = f"High burn rate: {burn_rate:.1f}x expected"
 
-        if window.is_exhausted():
+        if is_exhausted_effective:
             alert = True
-            alert_reason = "Error budget exhausted"
+            alert_reason = "Error budget (including carryover) exhausted"
+
+        if entering_carryover:
+            alert = True
+            alert_reason = "Consuming carryover budget"
+
+        # Get carryover manager for summary
+        carryover_mgr = get_carryover_manager()
+        carryover_summary = carryover_mgr.get_carryover_summary({
+            "total_budget_percent": window.total_budget_percent,
+            "consumed_percent": window.consumed_percent,
+            "carried_over_from_previous": window.carried_over_from_previous,
+            "recovery_credits": window.recovery_credits,
+            "total_available_budget": effective_budget,
+        })
 
         return {
             "month": window.month,
             "total_budget_percent": round(window.total_budget_percent, 4),
+            "carried_from_previous_percent": round(window.carried_over_from_previous, 4),
+            "recovery_credits_percent": round(window.recovery_credits, 4),
+            "effective_budget_percent": round(effective_budget, 4),
             "consumed_percent": round(window.consumed_percent, 4),
             "remaining_percent": round(window.remaining_percent(), 4),
-            "consumption_rate": round(consumption_rate, 2),
+            "remaining_effective_percent": round(remaining_effective, 4),
+            "consumption_rate": round(consumption_rate_base, 2),
+            "consumption_of_effective_rate": round(consumption_rate_effective, 2),
             "days_in_month": days_in_month,
             "days_elapsed": days_elapsed,
             "days_remaining": days_remaining,
@@ -210,6 +269,11 @@ class ErrorBudgetCalculator:
             "status": status,
             "alert": alert,
             "alert_reason": alert_reason,
+            "carryover_info": {
+                "has_carryover": window.carried_over_from_previous > 0.0,
+                "has_recovery_credits": window.recovery_credits > 0.0,
+                "entering_carryover_budget": entering_carryover,
+            }
         }
 
     def get_burn_rate_analysis(self) -> Dict[str, Any]:
