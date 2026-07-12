@@ -62,9 +62,82 @@ class CostTracker:
         self.queries: List[QueryCost] = []
         self.start_time = time.time()
 
-    def record_query(self, **kwargs):
-        """Record a query execution and its cost - SIMPLIFIED."""
-        return None  # Cost tracking temporarily disabled
+    def record_query(self, query_text: str = "", query_id: str = None, embedding_tokens: int = 0, completion_tokens: int = 0):
+        """Record a query execution and its cost.
+
+        Args:
+            query_text: The query that was executed
+            query_id: Optional ID for tracking
+            embedding_tokens: Number of embedding tokens used
+            completion_tokens: Number of completion tokens generated
+
+        Returns:
+            QueryCost object or None on error
+        """
+        try:
+            embedding_cost = self.calculate_embedding_cost(embedding_tokens)
+            completion_cost = self.calculate_completion_cost(completion_tokens)
+            total_cost = embedding_cost + completion_cost
+
+            query_cost = QueryCost(
+                query_text=query_text[:200],  # Store first 200 chars for reference
+                timestamp=datetime.now(timezone.utc),
+                query_id=query_id,
+                embedding_tokens=embedding_tokens,
+                completion_tokens=completion_tokens,
+                embedding_cost=embedding_cost,
+                completion_cost=completion_cost,
+                total_cost=total_cost,
+                model="ollama",  # Local (free), or will be set when switching to Claude/OpenAI
+            )
+
+            self.queries.append(query_cost)
+
+            # Check if approaching budget limits
+            summary = self.get_summary()
+            if summary.budget_usage_percent >= (self.budget.alert_threshold * 100):
+                self.log_cost_warning(
+                    f"Budget threshold reached: {summary.budget_usage_percent:.1f}% used "
+                    f"(${summary.daily_cost:.2f}/${self.budget.daily_limit:.2f})"
+                )
+
+            return query_cost
+
+        except Exception as e:
+            import logging
+            logging.error(f"Error recording query cost: {e}", exc_info=True)
+            return None
+
+    def track_query_cost(self, embedding_tokens: int = 0, completion_tokens: int = 0):
+        """Track query cost with token counts (wrapper for record_query).
+
+        Args:
+            embedding_tokens: Number of embedding tokens used
+            completion_tokens: Number of completion tokens generated
+
+        Returns:
+            QueryCost object or None
+        """
+        return self.record_query(
+            embedding_tokens=embedding_tokens,
+            completion_tokens=completion_tokens
+        )
+
+    def calculate_embedding_cost(self, embedding_tokens: int) -> float:
+        """Calculate cost for embedding tokens.
+
+        For Ollama (local): 0.0
+        For Claude API: ~$0.00002 per 1K tokens
+        """
+        return 0.0  # Free (local Ollama)
+
+    def calculate_completion_cost(self, completion_tokens: int) -> float:
+        """Calculate cost for completion tokens.
+
+        For Ollama (local): 0.0
+        For Claude API: ~$0.003 per 1K completion tokens
+        """
+        return 0.0  # Free (local Ollama)
 
     def get_summary(self) -> CostSummary:
         """Get cost statistics."""
@@ -106,14 +179,45 @@ class CostTracker:
         )
 
     def check_budget(self) -> Dict:
-        """Check if within budget limits."""
+        """Check if within budget limits.
+
+        Returns:
+            {
+                "daily_limit_ok": bool,
+                "monthly_limit_ok": bool,
+                "per_query_ok": bool,
+                "alert_threshold": bool,
+                "enforcement_action": "allow" | "warn" | "reject",
+                "summary": CostSummary,
+                "remaining_daily": float,
+                "remaining_monthly": float,
+            }
+        """
         summary = self.get_summary()
 
+        daily_ok = summary.daily_cost <= self.budget.daily_limit
+        monthly_ok = summary.monthly_cost <= self.budget.monthly_limit
+        per_query_ok = summary.daily_cost < self.budget.per_query_limit  # Check per-query within context
+
+        # Determine enforcement action
+        if not daily_ok or not monthly_ok:
+            enforcement_action = "reject"
+        elif not per_query_ok:
+            enforcement_action = "warn"
+        elif summary.budget_usage_percent >= (self.budget.alert_threshold * 100):
+            enforcement_action = "warn"
+        else:
+            enforcement_action = "allow"
+
         checks = {
-            "daily_limit_ok": summary.daily_cost <= self.budget.daily_limit,
-            "monthly_limit_ok": summary.monthly_cost <= self.budget.monthly_limit,
+            "daily_limit_ok": daily_ok,
+            "monthly_limit_ok": monthly_ok,
+            "per_query_ok": per_query_ok,
             "alert_threshold": summary.budget_usage_percent >= (self.budget.alert_threshold * 100),
+            "enforcement_action": enforcement_action,
             "summary": summary,
+            "remaining_daily": self.budget.daily_limit - summary.daily_cost,
+            "remaining_monthly": self.budget.monthly_limit - summary.monthly_cost,
         }
 
         return checks
@@ -192,18 +296,46 @@ def get_cost_tracker() -> CostTracker:
 
 
 def record_query_cost(
-    query_text,
-    query_id=None,
-    embedding_tokens=0,
-    completion_tokens=0,
-):
-    """Record query cost globally - TEMPORARILY DISABLED."""
+    query_text: str = "",
+    query_id: str = None,
+    embedding_tokens: int = 0,
+    completion_tokens: int = 0,
+) -> Optional[Dict]:
+    """Record query cost globally.
+
+    Args:
+        query_text: The query that was executed
+        query_id: Optional ID for tracking
+        embedding_tokens: Number of embedding tokens used
+        completion_tokens: Number of completion tokens generated
+
+    Returns:
+        Dict with cost tracking result or None on error
+    """
     try:
-        return None  # Disabled for now
+        tracker = get_cost_tracker()
+        query_cost = tracker.record_query(
+            query_text=query_text,
+            query_id=query_id,
+            embedding_tokens=embedding_tokens,
+            completion_tokens=completion_tokens,
+        )
+
+        if query_cost:
+            return {
+                "recorded": True,
+                "embedding_cost": query_cost.embedding_cost,
+                "completion_cost": query_cost.completion_cost,
+                "total_cost": query_cost.total_cost,
+                "model": query_cost.model,
+            }
+        else:
+            return {"recorded": False, "error": "Failed to record cost"}
+
     except Exception as e:
         import logging
         logging.error(f"Error in record_query_cost: {e}", exc_info=True)
-        return None
+        return {"recorded": False, "error": str(e)}
 
 
 def print_cost_report():
