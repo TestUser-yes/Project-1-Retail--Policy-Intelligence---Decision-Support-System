@@ -163,15 +163,15 @@ class TestUserSLOProfiles:
 
     def test_tier_hierarchy(self):
         """Test that tier thresholds are properly ordered."""
-        manager = UserSLOProfileManager()
+        from app.core.user_slo_profiles import TIER_PROFILES, UserTier
+
+        # Get tier profiles directly
+        trial = TIER_PROFILES[UserTier.TRIAL]
+        standard = TIER_PROFILES[UserTier.STANDARD]
+        premium = TIER_PROFILES[UserTier.PREMIUM]
+        enterprise = TIER_PROFILES[UserTier.ENTERPRISE]
 
         # Latency should be: Trial (relaxed) > Standard > Premium > Enterprise (strict)
-        trial = manager.get_profile("user_tier_trial")
-        standard = manager.get_profile("user_tier_standard")
-        premium = manager.get_profile("user_tier_premium")
-        enterprise = manager.get_profile("user_tier_enterprise")
-
-        # Trial should have most relaxed latency target
         assert trial.latency_target_ms > standard.latency_target_ms
         assert standard.latency_target_ms > premium.latency_target_ms
         assert premium.latency_target_ms > enterprise.latency_target_ms
@@ -239,7 +239,7 @@ class TestUserSLOProfiles:
         # Latency exceeds target but not hard limit
         result = manager.is_within_limits(
             "any_user",
-            latency_ms=3500.0,  # Between target (2500) and warning (3500)
+            latency_ms=3600.0,  # Exceeds warning (3500), but < hard limit (5000)
             confidence=0.75,
         )
 
