@@ -32,6 +32,8 @@ class Orchestrator:
     @trace_function("ask_query", as_type="chain")
     def run(self, query: str, user_role: str = "viewer"):
         """Process query and return demo response."""
+        import sys
+        print("[ORCHESTRATOR.RUN] Starting...", file=sys.stderr)
         try:
             # ===== GUARDRAILS LAYER 1-6: INPUT VALIDATION =====
             middleware = get_guardrails_middleware(user_role=user_role)

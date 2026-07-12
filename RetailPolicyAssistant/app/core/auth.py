@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 from jose import JWTError, jwt
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 import hashlib
 from app.config import get_config
 
@@ -135,7 +135,7 @@ def revoke_refresh_token(refresh_token: str) -> bool:
         return False
 
 
-async def get_current_user(request) -> User:
+async def get_current_user(request: Request) -> User:
     """Get current user from JWT token - supports both Bearer auth and secure cookies.
 
     Priority order:

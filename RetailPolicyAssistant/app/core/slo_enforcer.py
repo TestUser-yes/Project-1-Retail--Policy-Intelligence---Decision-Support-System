@@ -3,6 +3,10 @@
 import os
 from typing import Optional
 
+# Module load marker
+import sys
+sys.stderr.write("SLO ENFORCER MODULE LOADED\n")
+
 
 class SLOEnforcer:
     """Enforces SLO boundaries on query responses.
@@ -12,19 +16,23 @@ class SLOEnforcer:
     """
 
     def __init__(self):
-        # Latency boundaries (in milliseconds)
-        self.latency_target_ms = float(os.getenv("SLO_LATENCY_TARGET_MS", "2000"))
-        self.latency_hard_limit_ms = float(os.getenv("SLO_LATENCY_HARD_LIMIT_MS", "2400"))
-
-        # Confidence threshold
-        self.confidence_min = float(os.getenv("SLO_CONFIDENCE_MIN", "0.70"))
-
-        # Enforcement flags
-        self.enforce_latency = os.getenv("SLO_ENFORCE_LATENCY", "true").lower() == "true"
-        self.enforce_confidence = os.getenv("SLO_ENFORCE_CONFIDENCE", "true").lower() == "true"
-        self.enforce_accuracy = os.getenv("SLO_ENFORCE_ACCURACY", "true").lower() == "true"
-
         self.slo_breaches = []
+
+    def _get_enforcement_settings(self):
+        """Load enforcement settings dynamically to handle module reloads."""
+        from app.core.config import settings
+        cfg = {
+            'latency_target_ms': settings.SLO_LATENCY_TARGET_MS,
+            'latency_hard_limit_ms': settings.SLO_LATENCY_HARD_LIMIT_MS,
+            'confidence_min': settings.SLO_CONFIDENCE_MIN,
+            'enforce_latency': settings.SLO_ENFORCE_LATENCY,
+            'enforce_confidence': settings.SLO_ENFORCE_CONFIDENCE,
+            'enforce_accuracy': settings.SLO_ENFORCE_ACCURACY,
+        }
+        # DEBUG: Print to file
+        with open('/tmp/slo_debug.log', 'a') as f:
+            f.write(f"SLO Config loaded: {cfg}\n")
+        return cfg
 
     def enforce(self, response: dict, latency_seconds: float) -> dict:
         """Apply SLO enforcement to response.
@@ -43,6 +51,12 @@ class SLOEnforcer:
                 "breach_reasons": list[str],
             }
         """
+        # DEBUG: Entry point
+        print("[SLO ENFORCE CALLED]", file=sys.stderr)
+
+        # Load settings dynamically on each call to handle module reloads
+        cfg = self._get_enforcement_settings()
+
         latency_ms = latency_seconds * 1000
         confidence = response.get("confidence_score", 0.5)
         slo_metrics = response.get("slo_metrics", {})
@@ -55,8 +69,8 @@ class SLOEnforcer:
         breached = False
 
         # Check 1: Latency SLO
-        if self.enforce_latency:
-            latency_check = self._check_latency(latency_ms)
+        if cfg['enforce_latency']:
+            latency_check = self._check_latency(latency_ms, cfg)
             if latency_check["breached"]:
                 breach_reasons.append(latency_check["reason"])
                 breached = True
@@ -71,8 +85,8 @@ class SLOEnforcer:
                     enforcement_action = "warning"
 
         # Check 2: Confidence Score
-        if self.enforce_confidence and allow:
-            confidence_check = self._check_confidence(confidence)
+        if cfg['enforce_confidence'] and allow:
+            confidence_check = self._check_confidence(confidence, cfg)
             if confidence_check["breached"]:
                 breach_reasons.append(confidence_check["reason"])
                 breached = True
@@ -89,7 +103,7 @@ class SLOEnforcer:
                     enforcement_action = "warning"
 
         # Check 3: Overall SLO Status
-        if self.enforce_accuracy and allow and slo_status == "fail":
+        if cfg['enforce_accuracy'] and allow and slo_status == "fail":
             breach_reasons.append(f"SLO status failed: {slo_status}")
             breached = True
             # Don't reject on fail status, but warn with 202
@@ -115,7 +129,7 @@ class SLOEnforcer:
             "breach_reasons": breach_reasons,
         }
 
-    def _check_latency(self, latency_ms: float) -> dict:
+    def _check_latency(self, latency_ms: float, cfg: dict) -> dict:
         """Check if latency breaches SLO boundaries.
 
         Returns:
@@ -125,17 +139,17 @@ class SLOEnforcer:
                 "reason": str,
             }
         """
-        if latency_ms <= self.latency_target_ms:
+        if latency_ms <= cfg['latency_target_ms']:
             return {
                 "breached": False,
                 "severity": "none",
                 "reason": "Latency OK",
             }
-        elif latency_ms <= self.latency_hard_limit_ms:
+        elif latency_ms <= cfg['latency_hard_limit_ms']:
             return {
                 "breached": True,
                 "severity": "warning",
-                "reason": f"Latency warning: {latency_ms:.0f}ms > target {self.latency_target_ms:.0f}ms",
+                "reason": f"Latency warning: {latency_ms:.0f}ms > target {cfg['latency_target_ms']:.0f}ms",
             }
         else:
             # Changed from "hard" to "warning" to allow responses but track SLO breach
@@ -143,10 +157,10 @@ class SLOEnforcer:
             return {
                 "breached": True,
                 "severity": "warning",
-                "reason": f"Latency SLO target exceeded: {latency_ms:.0f}ms > hard limit {self.latency_hard_limit_ms:.0f}ms",
+                "reason": f"[NEW_CODE] Latency SLO target exceeded: {latency_ms:.0f}ms > hard limit {cfg['latency_hard_limit_ms']:.0f}ms",
             }
 
-    def _check_confidence(self, confidence: float) -> dict:
+    def _check_confidence(self, confidence: float, cfg: dict) -> dict:
         """Check if confidence score meets minimum threshold.
 
         Returns:
@@ -156,7 +170,7 @@ class SLOEnforcer:
                 "reason": str,
             }
         """
-        if confidence >= self.confidence_min:
+        if confidence >= cfg['confidence_min']:
             return {
                 "breached": False,
                 "action": "none",
@@ -167,7 +181,7 @@ class SLOEnforcer:
             return {
                 "breached": True,
                 "action": "warn",
-                "reason": f"Low confidence: {confidence:.2f} < {self.confidence_min}",
+                "reason": f"Low confidence: {confidence:.2f} < {cfg['confidence_min']}",
             }
         else:
             # Very low confidence - escalate

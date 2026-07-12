@@ -61,7 +61,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Container fluid>
             <Navbar.Text className="me-auto">
               <i className="bi bi-info-circle me-2"></i>
-              {user?.username && `Welcome, ${user.username}`}
+              {user?.username && `Welcome User, ${user.username}`}
             </Navbar.Text>
             <Button
               variant="outline-primary"

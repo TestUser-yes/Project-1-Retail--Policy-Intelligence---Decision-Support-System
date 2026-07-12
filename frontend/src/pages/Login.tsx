@@ -61,7 +61,7 @@ export const Login: React.FC = () => {
                   className="w-100"
                   disabled={loading}
                 >
-                  {loading ? 'Logging in...' : 'Login as Demo User'}
+                  {loading ? 'Logging in...' : 'Login as User'}
                 </Button>
               </Form.Group>
             </Form>

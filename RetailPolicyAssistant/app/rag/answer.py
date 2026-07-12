@@ -7,10 +7,10 @@ from app.prompts import get_rag_template
 
 
 def _extract_answer_from_chunks(chunks, query: str) -> str:
-    """Extract a concise answer from chunks without using LLM.
+    """Extract a comprehensive answer from chunks without using LLM.
 
     Falls back to intelligent extraction when LLM service is unavailable.
-    Extracts first 2-3 sentences that are most relevant to the query.
+    Extracts first 5-7 sentences that are most relevant to the query.
     """
     if not chunks:
         return "Error: No chunks available"
@@ -33,20 +33,20 @@ def _extract_answer_from_chunks(chunks, query: str) -> str:
             sentence_lower = sentence.lower()
             matches = sum(1 for word in query_words if word in sentence_lower)
 
-            if matches > 0 or sentence_count < 2:  # Include at least 2 sentences
+            if matches > 0 or sentence_count < 3:  # Include at least 3 sentences
                 best_sentences.append(sentence)
                 sentence_count += 1
 
-                if sentence_count >= 3:  # Stop after 3 sentences
+                if sentence_count >= 7:  # Stop after 7 sentences
                     break
 
-        if sentence_count >= 3:
+        if sentence_count >= 7:
             break
 
     if not best_sentences:
         # Fallback: just take first sentences from first chunk
         sentences = [s.strip() for s in chunks[0].content.split('. ') if s.strip()]
-        best_sentences = sentences[:3]
+        best_sentences = sentences[:7]
 
     # Join sentences with proper punctuation
     answer = '. '.join(best_sentences)
@@ -67,7 +67,7 @@ def answer_rag(query: str, use_multi_agent: bool = True) -> dict:
 
     Returns:
     {
-        "result": str (the answer - 2-3 sentences maximum),
+        "result": str (the answer - 5-7 sentences for comprehensive coverage),
         "answer": str (same as result for compatibility),
         "sources": list of document chunks with metadata,
         "confidence": float (0.92 for PDF-backed answers),
@@ -118,8 +118,8 @@ def answer_rag(query: str, use_multi_agent: bool = True) -> dict:
     template = get_rag_template("strict_grounding")
     messages = template.format_prompt(context, query)
 
-    # Add strict conciseness instruction to user message
-    messages[-1]["content"] += "\n\nIMPORTANT: Keep your answer to 2-3 sentences maximum. Be concise."
+    # Add conciseness instruction to user message
+    messages[-1]["content"] += "\n\nIMPORTANT: Provide a comprehensive answer with 5-7 sentences of detail."
 
     try:
         # Call LLM with template-formatted messages
@@ -128,11 +128,11 @@ def answer_rag(query: str, use_multi_agent: bool = True) -> dict:
         # Clean up response
         answer = response.strip()
 
-        # Enforce hard limit: if response is too long, truncate to first 2-3 sentences
+        # Enforce limit: if response is too long, truncate to first 7 sentences
         sentences = answer.split('. ')
-        if len(sentences) > 3:
-            # Keep only first 3 sentences
-            answer = '. '.join(sentences[:3]) + '.'
+        if len(sentences) > 7:
+            # Keep only first 7 sentences
+            answer = '. '.join(sentences[:7]) + '.'
             answer = answer.replace('..', '.')  # Fix any double periods
 
     except Exception as e:

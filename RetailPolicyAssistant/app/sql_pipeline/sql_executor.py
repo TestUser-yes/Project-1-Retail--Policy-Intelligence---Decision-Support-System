@@ -6,7 +6,7 @@ from sqlalchemy import text, event
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 from sqlalchemy.orm import Session
 from app.database.session import SessionLocal
-from app.guardrails.sql_safety_checker import check_sql_safety
+from app.guardrails.sql_safety_checker import SQLSafetyChecker
 
 
 class SQLExecutor:
@@ -14,16 +14,17 @@ class SQLExecutor:
 
     def __init__(self, db_connection: Optional[Session] = None):
         self.db = db_connection
+        self.safety_checker = SQLSafetyChecker()
 
     def execute(self, sql: str) -> dict:
         """Execute SQL query synchronously with transaction management."""
         try:
             # Validate and sanitize SQL
-            safety_check = check_sql_safety(sql)
-            if not safety_check.get("safe", False):
+            safety_check = self.safety_checker.check(sql)
+            if not safety_check.get("is_safe", False):
                 return {
                     "success": False,
-                    "error": f"Query blocked by security checks: {safety_check.get('reason', 'Unknown security violation')}",
+                    "error": f"Query blocked by security checks: unsafe keywords {safety_check.get('unsafe_keywords', [])}",
                     "row_count": 0,
                 }
 
